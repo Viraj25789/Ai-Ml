@@ -1,0 +1,17 @@
+2026-08-03 23:10:48,415 - INFO - Initializing scraper pipeline for 5 pages.
+2026-08-03 23:10:50,940 - INFO - Successfully extracted 20 items from page 1
+2026-08-03 23:10:52,672 - INFO - Successfully extracted 20 items from page 2
+2026-08-03 23:10:54,436 - INFO - Successfully extracted 20 items from page 3
+2026-08-03 23:10:56,305 - INFO - Successfully extracted 20 items from page 4
+2026-08-03 23:10:58,507 - INFO - Successfully extracted 20 items from page 5
+2026-08-03 23:10:59,518 - INFO - Pipeline complete. 100 records saved to data/raw_books.csv
+2026-08-03 23:11:45,048 - INFO - Database schema initialized and indices created successfully.
+2026-08-03 23:11:45,052 - INFO - Loaded raw dataset containing 100 records.
+2026-08-03 23:11:45,053 - INFO - Transforming price attributes to numeric float format...
+2026-08-03 23:11:45,057 - INFO - Mapping rating categories to numerical values...
+2026-08-03 23:11:45,058 - INFO - Normalizing stock availability into boolean representation...
+2026-08-03 23:11:45,067 - INFO - Clean dataset exported successfully to CSV: data/clean_books.csv
+2026-08-03 23:11:45,079 - INFO - Successfully inserted 100 records into 'books' table.
+2026-08-03 23:11:45,079 - INFO - Clean dataset successfully loaded into relational SQLite database.
+2026-08-03 23:12:15,659 - INFO - Database schema initialized and indices created successfully.
+2026-08-03 23:12:15,671 - INFO - Executive analytical report generated successfully.
