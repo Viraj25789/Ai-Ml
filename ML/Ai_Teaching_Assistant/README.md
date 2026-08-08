@@ -1,4 +1,4 @@
-# 🎓 RAG AI Teaching Assistant
+# AI Teaching Assistant
 
 An AI assistant that watches your course videos for you. Ask it a question, and it tells you **exactly which video and timestamp** covers that topic — like a smart search engine built specifically for your course content.
 
