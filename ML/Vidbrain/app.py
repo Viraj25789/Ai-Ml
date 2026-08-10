@@ -11,19 +11,19 @@ from utils.extract_vid_id import extract_video_id
 from utils.transcript import get_youtube_transcript
 from rag_engine import build_vector_store, create_rag_chain
 
-# --- Page Configuration ---
+# Page Configuration
 st.set_page_config(page_title="VidBrain - YouTube RAG", layout="centered")
 st.title("VidBrain: YouTube Transcript Analyzer")
 st.markdown("Turn any YouTube tutorial into an interactive, searchable knowledge base.")
 
-# --- Load API Key ---
+# Load API Key
 try:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 except KeyError:
     st.error("Missing API Key. Please add GROQ_API_KEY to your Streamlit secrets.")
     st.stop()
 
-# --- Session State Initialization ---
+# Session State Initialization
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 if "current_video_id" not in st.session_state:
@@ -31,7 +31,7 @@ if "current_video_id" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# --- UI: Video Input ---
+# UI: Video Input
 video_url = st.text_input("Paste a YouTube Video URL here:")
 
 if video_url:
@@ -60,7 +60,7 @@ if video_url:
                 st.session_state.vector_store = None
                 st.session_state.current_video_id = None
 
-    # --- UI: Chat Interface ---
+    # Chat Interface
     if st.session_state.vector_store is not None:
         st.divider()
         st.subheader("Chat with the Video")
@@ -91,3 +91,4 @@ if video_url:
                     
                     st.markdown(answer)
                     st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                    
