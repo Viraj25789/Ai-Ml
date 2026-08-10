@@ -22,8 +22,8 @@ VidBrain is a Retrieval-Augmented Generation (RAG) application that allows users
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/vidbrain-youtube-rag.git
-   cd vidbrain-youtube-rag
+   git clone https://github.com/Viraj25789/Ai-Ml/ML/Vidbrain.git
+   cd vidbrain
    ```
 
 2. **Create and activate a virtual environment**
