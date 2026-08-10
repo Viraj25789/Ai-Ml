@@ -1,4 +1,4 @@
-# 🧠 VidBrain: YouTube Transcript Analyzer
+# 🧠 VidBrain: Smart Assistant
 
 VidBrain is a Retrieval-Augmented Generation (RAG) application that allows users to instantly chat with hours-long YouTube tutorials. It extracts the video transcript, stores it in an ephemeral vector database, and uses LLMs to answer highly specific questions based *strictly* on the video's content.
 
