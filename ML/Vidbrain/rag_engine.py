@@ -12,7 +12,7 @@ def build_vector_store(text: str):
     Takes raw text, chunks it, embeds it, and stores it in FAISS memory.
     """
     # 1. Chunking
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=900, chunk_overlap=200)
     chunks = text_splitter.split_text(text)
     
     # 2. Embedding & Vector DB (FAISS)
