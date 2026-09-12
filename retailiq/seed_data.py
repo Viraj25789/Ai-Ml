@@ -5,13 +5,20 @@ business and loads it into retailiq.db (SQLite).
 
 Run: python seed_data.py
 """
+import os
 import sqlite3
 import random
 from datetime import date, timedelta
 
 random.seed(42)
 
-DB_PATH = "retailiq.db"
+# Resolve paths relative to this file's own folder, not the current working
+# directory — Streamlit Cloud (and some other hosts) run the app from a
+# different cwd, so plain "schema.sql" / "retailiq.db" can fail with
+# FileNotFoundError depending on where the repo is checked out.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "retailiq.db")
+SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
 
 FIRST_NAMES = ["Aarav", "Aditi", "Aman", "Ananya", "Arjun", "Bhavna", "Chirag", "Deepika",
                "Dev", "Esha", "Farhan", "Gauri", "Harsh", "Isha", "Jatin", "Kavya",
@@ -75,7 +82,7 @@ def random_date(start_year=2023, end=None):
 def build():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    with open("schema.sql") as f:
+    with open(SCHEMA_PATH) as f:
         cur.executescript(f.read())
 
     # Categories

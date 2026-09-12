@@ -25,7 +25,8 @@ from sklearn.preprocessing import StandardScaler
 
 from query_library import QUERY_LIBRARY
 
-DB_PATH = "retailiq.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "retailiq.db")
 
 # On a fresh deploy (e.g. Streamlit Community Cloud) the .db file may not be
 # in the repo — build it on first run so there's nothing manual to set up.
