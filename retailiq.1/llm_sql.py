@@ -16,7 +16,11 @@ import os
 import re
 import requests
 
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = "openai/gpt-oss-20b"
+# Tried in order; if one is retired/unavailable for the account, the next is
+# used automatically. Groq periodically deprecates model names, so this list
+# is worth revisiting occasionally — check https://console.groq.com/docs/models
+FALLBACK_MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound-mini"]
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SCHEMA_DESCRIPTION = """
@@ -86,21 +90,12 @@ def clean_sql_output(raw: str) -> str:
     return text.rstrip(";").strip()
 
 
-def generate_sql(question: str) -> str:
-    """Calls the LLM and returns a cleaned SQL string. Raises on any failure
-    (missing key, network error, malformed response) — callers should catch."""
-    api_key = get_api_key()
-    if not api_key:
-        raise RuntimeError(
-            "No GROQ_API_KEY configured. Add a free key from "
-            "https://console.groq.com/keys to your Streamlit secrets."
-        )
-
+def _call_groq(api_key: str, model: str, question: str) -> str:
     response = requests.post(
         GROQ_URL,
         headers={"Authorization": f"Bearer {api_key}"},
         json={
-            "model": GROQ_MODEL,
+            "model": model,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": question},
@@ -111,5 +106,32 @@ def generate_sql(question: str) -> str:
         timeout=20,
     )
     response.raise_for_status()
-    raw_sql = response.json()["choices"][0]["message"]["content"]
-    return clean_sql_output(raw_sql)
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def generate_sql(question: str) -> str:
+    """Calls the LLM and returns a cleaned SQL string. Tries each model in
+    FALLBACK_MODELS in order in case one has been deprecated on the account —
+    Groq retires model names more often than most providers. Raises only if
+    every candidate fails (missing key, network error, all models unavailable)."""
+    api_key = get_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "No GROQ_API_KEY configured. Add a free key from "
+            "https://console.groq.com/keys to your Streamlit secrets."
+        )
+
+    last_error = None
+    for model in FALLBACK_MODELS:
+        try:
+            raw_sql = _call_groq(api_key, model, question)
+            return clean_sql_output(raw_sql)
+        except requests.exceptions.HTTPError as e:
+            last_error = e
+            if e.response is not None and e.response.status_code == 404:
+                continue  # model unavailable on this account — try the next one
+            raise
+    raise RuntimeError(
+        f"All configured Groq models failed (last error: {last_error}). "
+        "Check https://console.groq.com/docs/models for currently available models."
+    )
