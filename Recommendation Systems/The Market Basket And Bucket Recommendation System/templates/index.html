@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketBasket Engine</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+
+  <!-- ═══════════════════ TOP BAR ═══════════════════ -->
+  <nav class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">📊</div>
+      MarketBasket <span class="accent">Engine</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="db-badge" title="{{ active_db_name }}">{{ active_db_name }}</span>
+      <form action="/upload" method="POST" enctype="multipart/form-data" id="uploadForm">
+        <label for="csv_file" class="btn btn-upload" style="cursor:pointer;">
+          📂 <span>Change Dataset</span>
+        </label>
+        <input type="file" id="csv_file" name="csv_file" accept=".csv" style="display:none;"
+               onchange="document.getElementById('uploadForm').submit();" />
+      </form>
+      <a href="/download_report?user_id={{ user_id }}" class="btn btn-ghost">
+        📥 <span>Download Report</span>
+      </a>
+    </div>
+  </nav>
+
+
+  <!-- ═══════════════════ MAIN DASHBOARD ═══════════════════ -->
+  <main class="dashboard">
+
+    <header class="hero">
+      <h1>Market <span class="accent">Intelligence</span></h1>
+      <p>Discover product associations, personalize customer experiences,
+         and optimise your retail strategy — powered by AI.</p>
+      <div class="tab-bar">
+        <button class="tab-btn" id="btnUser"    onclick="openTab('UserView')">
+          👤 Customer Insights
+        </button>
+        <button class="tab-btn" id="btnProduct" onclick="openTab('ProductView')">
+          🔍 Product Analysis
+        </button>
+      </div>
+    </header>
+
+
+    <!-- ════ TAB: CUSTOMER INSIGHTS ════ -->
+    <div id="UserView" class="tab-content">
+
+      <div class="search-form">
+        <label>Customer Profile Lookup</label>
+        <form method="POST" class="input-row">
+          <input  type="text" name="user_id" class="input"
+                  placeholder="Enter User ID (e.g. 101)"
+                  value="{{ user_id }}" />
+          <button type="submit" class="btn btn-primary">View Profile</button>
+        </form>
+      </div>
+
+      <!-- Row 1: Personalized picks + Behaviour profile -->
+      <div class="grid-2">
+
+        <!-- Personalized recommendations -->
+        <div class="card accent-l">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+            <div>
+              <div class="card-title">🎯 Personalized Picks</div>
+              <div class="card-subtitle">
+                {% if user_behavior.is_new_user %}
+                  No history found — showing popular items for User&nbsp;#{{ user_id }}.
+                {% else %}
+                  Curated for User&nbsp;#{{ user_id }} based on purchase affinity.
+                {% endif %}
+              </div>
+            </div>
+            <span class="ai-badge">CF Model</span>
+          </div>
+          <div class="tag-list">
+            {% if user_recommendations %}
+              {% for rec in user_recommendations %}
+                <span class="tag green">{{ rec }}</span>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">No recommendations available.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Behaviour profile -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.2rem;">
+            <div>
+              <div class="card-title">👤 Behaviour Profile</div>
+              <div class="card-subtitle">User&nbsp;#{{ user_id }}</div>
+            </div>
+            <span class="ai-badge">Analytics</span>
+          </div>
+
+          <div class="profile-grid">
+            <div class="profile-stat">
+              <span class="stat-label">Engagement</span>
+              <span class="stat-value"
+                style="color:
+                  {% if user_behavior.status == 'Elite Buyer' %}var(--green)
+                  {% elif user_behavior.status == 'Regular Buyer' %}var(--blue)
+                  {% elif user_behavior.status == 'Occasional Buyer' %}var(--amber)
+                  {% else %}var(--muted-light){% endif %};">
+                {{ user_behavior.status }}
+              </span>
+            </div>
+            <div class="profile-stat">
+              <span class="stat-label">Churn Risk</span>
+              <span class="stat-value"
+                style="color:
+                  {% if user_behavior.churn_risk == 'Low' %}var(--green)
+                  {% elif user_behavior.churn_risk == 'Medium' %}var(--amber)
+                  {% else %}var(--red){% endif %};">
+                {{ user_behavior.churn_risk }}
+              </span>
+            </div>
+            <div class="profile-stat">
+              <span class="stat-label">Percentile</span>
+              <span class="stat-value">
+                {% if user_behavior.percentile > 0 %}
+                  Top {{ 100 - user_behavior.percentile }}%
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </div>
+          </div>
+
+          <div style="margin-top:1.2rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--muted-light); margin-bottom:5px;">
+              <span>
+                Catalogue coverage &nbsp;·&nbsp;
+                <strong style="color:var(--text);">{{ user_behavior.items_bought }}</strong>
+                of {{ user_behavior.total_items }} items purchased
+              </span>
+              <span style="color:var(--green); font-weight:600;">{{ user_behavior.loyalty_score }}%</span>
+            </div>
+            <div class="loyalty-bar-track">
+              <div class="loyalty-bar-fill" style="width: {{ user_behavior.loyalty_score }}%;"></div>
+            </div>
+            <div style="font-size:0.72rem; color:var(--muted); margin-top:5px;">
+              Avg. user buys {{ user_behavior.avg_items }} items &nbsp;·&nbsp;
+              {% if user_behavior.items_bought > 0 %}
+                This user buys
+                {% if user_behavior.items_bought >= user_behavior.avg_items %}
+                  <span style="color:var(--green);">above average</span>
+                {% else %}
+                  <span style="color:var(--amber);">below average</span>
+                {% endif %}
+              {% else %}
+                <span style="color:var(--muted);">No purchase history</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /grid-2 row 1 -->
+
+
+      <!-- ════ NEXT-PURCHASE PREDICTION CARD ════ -->
+      <div class="card next-buy-card" style="margin-bottom: 1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.2rem;">
+          <div>
+            <div class="card-title">🔮 What Will User&nbsp;#{{ user_id }} Buy Next?</div>
+            <div class="card-subtitle">
+              {% if next_predictions %}
+                Predicted from
+                <strong style="color:var(--text);">{{ purchase_history | length }}</strong>
+                purchased items using sequential pattern analysis.
+              {% elif purchase_history %}
+                Purchase history found but no strong next-item signal detected.
+              {% else %}
+                No purchase history for this user — try a different User ID.
+              {% endif %}
+            </div>
+          </div>
+          <span class="ai-badge" style="background:rgba(120,80,255,0.12); color:#a78bfa; border-color:rgba(120,80,255,0.25);">
+            Markov Chain
+          </span>
+        </div>
+
+        {% if next_predictions %}
+          <!-- Prediction bars -->
+          <div class="prediction-list">
+            {% for pred in next_predictions %}
+            <div class="prediction-row">
+              <div class="pred-meta">
+                <span class="pred-item">{{ pred.item }}</span>
+                <span class="pred-source
+                  {% if pred.source == 'Sequence Pattern' %}src-seq
+                  {% else %}src-coo{% endif %}">
+                  {{ pred.source }}
+                </span>
+              </div>
+              <div class="pred-bar-wrap">
+                <div class="pred-bar-track">
+                  <div class="pred-bar-fill" style="width: {{ pred.pct }}%;"></div>
+                </div>
+                <span class="pred-pct">{{ pred.pct }}%</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Recent history strip -->
+          {% if purchase_history %}
+          <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--border);">
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:0.5rem;">
+              Purchase history ({{ purchase_history | length }} items)
+            </div>
+            <div class="tag-list">
+              {% for h in purchase_history[:12] %}
+                <span class="tag" style="font-size:0.75rem; padding:4px 10px;">{{ h }}</span>
+              {% endfor %}
+              {% if purchase_history | length > 12 %}
+                <span class="tag" style="font-size:0.75rem; padding:4px 10px; color:var(--muted);">
+                  +{{ purchase_history | length - 12 }} more
+                </span>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+        {% else %}
+          <div class="empty-state">
+            <div style="font-size:2rem; margin-bottom:0.5rem;">🔍</div>
+            Enter a User ID above to see next-purchase predictions.
+          </div>
+        {% endif %}
+
+      </div><!-- /next-buy-card -->
+
+    </div><!-- END: Customer Insights -->
+
+
+    <!-- ════ TAB: PRODUCT ANALYSIS ════ -->
+    <div id="ProductView" class="tab-content">
+
+      <div class="search-form">
+        <label>Product Association Search</label>
+        <form method="POST" class="input-row">
+          <input  type="text" name="item" class="input"
+                  placeholder="Type a product name (e.g. Milk)"
+                  value="{{ item or '' }}" />
+          <button type="submit" class="btn btn-primary">Analyze</button>
+        </form>
+      </div>
+
+      <div class="grid-2">
+        <div class="card accent-l">
+          <div class="card-title">🔗 Frequently Bought Together</div>
+          <div class="card-subtitle">
+            Items that co-occur with
+            <strong style="color:var(--text);">{{ item or '…' }}</strong>
+          </div>
+          <div class="tag-list">
+            {% if item_recommendations %}
+              {% for rec in item_recommendations %}
+                <span class="tag green">{{ rec }}</span>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">
+                Search a product above to see associations.
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📈 Item Popularity</div>
+          <div class="card-subtitle">Top-15 most purchased items</div>
+          <div class="chart-wrap">
+            <canvas id="itemChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card accent-r" style="margin-bottom: 1.5rem;">
+        <div class="card-title">⚠️ Low Performers</div>
+        <div class="card-subtitle">Items with the lowest purchase frequency — consider promotions or removal.</div>
+        <div class="tag-list">
+          {% if low_performers %}
+            {% for lp in low_performers %}
+              <span class="tag red">{{ lp }}</span>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">No low-performer data available.</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div><!-- END: Product Analysis -->
+
+
+    <!-- ═══════════ MARKET OVERVIEW (always visible) ═══════════ -->
+    <hr class="divider" />
+
+    <div style="margin-bottom: 1.5rem;">
+      <h2 style="font-size:1.4rem; margin-bottom:0.3rem;">🌐 Market Overview</h2>
+      <p class="muted">Live metrics from the active dataset.</p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Transactions</span>
+        <span class="kpi-num">{{ total_transactions }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Unique Users</span>
+        <span class="kpi-num">{{ total_users }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Unique Items</span>
+        <span class="kpi-num">{{ total_tracked_items }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Rules Found</span>
+        <span class="kpi-num">{{ total_active_rules }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Avg. Basket</span>
+        <span class="kpi-num">{{ avg_basket_size }}</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+          <div>
+            <div class="card-title">📦 Top Product Bundles</div>
+            <div class="card-subtitle">Highest-lift item pairs from Apriori analysis</div>
+          </div>
+          <span class="ai-badge">Apriori</span>
+        </div>
+        <div class="bundle-list">
+          {% if bundles %}
+            {% for bundle in bundles[:5] %}
+            <div class="bundle-row">
+              <span class="bundle-index">#{{ loop.index }}</span>
+              <div class="bundle-products">
+                {% for prod in bundle %}
+                  <span class="tag blue">{{ prod }}</span>
+                  {% if not loop.last %}<span class="plus-sign">+</span>{% endif %}
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">Not enough data to detect bundles.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Rule Strength Matrix</div>
+        <div class="card-subtitle">Confidence (bars) vs Lift (line) for the top rules</div>
+        <div class="chart-wrap">
+          <canvas id="rulesChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+
+  <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+  <script src="/static/charts.js"></script>
+
+  <script>
+    function openTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      const btnId = tabId === 'UserView' ? 'btnUser' : 'btnProduct';
+      document.getElementById(btnId).classList.add('active');
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      const hasItem = "{{ item }}";
+      if (hasItem && hasItem !== "None") {
+        openTab('ProductView');
+      } else {
+        openTab('UserView');
+      }
+
+      renderItemChart(
+        {{ items   | tojson | safe }},
+        {{ counts  | tojson | safe }}
+      );
+      renderRulesChart(
+        {{ chart_labels     | tojson | safe }},
+        {{ chart_confidence | tojson | safe }},
+        {{ chart_lift       | tojson | safe }}
+      );
+
+      // Animate prediction bars on load
+      document.querySelectorAll('.pred-bar-fill').forEach(bar => {
+        const target = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => { bar.style.width = target; }, 100);
+      });
+    });
+  </script>
+
+</body>
+</html>
