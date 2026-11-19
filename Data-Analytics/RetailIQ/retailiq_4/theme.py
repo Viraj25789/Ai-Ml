@@ -65,9 +65,17 @@ html, body {{
 
 /* ---------- Typography ---------- */
 
-html, body, [class*="st-"] {{
+
+html, body {
     font-family: "Inter", "Segoe UI", sans-serif;
-}}
+}
+
+[data-testid="stMarkdownContainer"],
+[data-testid="stWidgetLabel"],
+[data-testid="stCaptionContainer"] {
+    font-family: "Inter", "Segoe UI", sans-serif;
+}
+
 
 h1, h2, h3, h4, h5, h6 {{
     color: {INK} !important;
