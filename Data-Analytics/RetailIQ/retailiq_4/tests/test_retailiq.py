@@ -105,6 +105,8 @@ class RetailIQTests(unittest.TestCase):
         result = self.connection.execute(
             "PRAGMA foreign_key_check"
         ).fetchall()
+
+        self.assertEqual(result, [])
     
     def test_ai_sql_output_is_cleaned(self):
         cases = [
@@ -128,9 +130,6 @@ class RetailIQTests(unittest.TestCase):
                     llm_sql.clean_sql_output(raw_sql),
                     expected,
                 )
-
-
-        self.assertEqual(result, [])
 
     def test_existing_database_is_not_overwritten(self):
         with self.assertRaises(SystemExit):
