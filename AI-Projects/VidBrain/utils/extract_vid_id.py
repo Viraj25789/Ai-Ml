@@ -1,19 +1,72 @@
+
 import re
+from urllib.parse import parse_qs, urlsplit
 
-def extract_video_id(video_url: str) -> str:
-    """
-    Safely extracts the 11-character YouTube Video ID using Regex.
-    Works on standard, shortened, embedded, and mobile URLs.
-    """
-    # This regex pattern finds the exact 11-character ID in any YouTube link
-    pattern = r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
-    
-    match = re.search(pattern, video_url)
-    
-    if match:
-        return match.group(1)
-    return None
+VIDEO_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
 
-# testing
-# video_id = extract_video_id("https://youtu.be/YimMzb0mHkI?si=gE-2TBEThr5ywLDN")
-# print(video_id)
+YOUTUBE_DOMAINS = {
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "music.youtube.com",
+    "youtube-nocookie.com",
+    "www.youtube-nocookie.com",
+    "youtu.be",
+}
+
+
+def extract_video_id(video_url: str) -> str | None:
+    """
+    Extract an 11-character YouTube video ID.
+
+    Supports:
+    - Standard watch URLs
+    - Shortened youtu.be URLs
+    - YouTube Shorts
+    - Embedded videos
+    - YouTube Live URLs
+
+    Returns None for invalid or unsupported URLs.
+    """
+    if not isinstance(video_url, str) or not video_url.strip():
+        return None
+
+    url = video_url.strip()
+
+    if "://" not in url:
+        url = "https://" + url
+
+    try:
+        parsed = urlsplit(url)
+        hostname = (parsed.hostname or "").lower()
+
+        if hostname not in YOUTUBE_DOMAINS:
+            return None
+
+        video_id = None
+
+        if hostname == "youtu.be":
+            video_id = parsed.path.strip("/").split("/")[0]
+
+        else:
+            query_params = parse_qs(parsed.query)
+            video_id = query_params.get("v", [None])[0]
+
+            if not video_id:
+                path_parts = [
+                    part for part in parsed.path.split("/") if part
+                ]
+
+                if (
+                    len(path_parts) >= 2
+                    and path_parts[0] in {"shorts", "embed", "live", "v"}
+                ):
+                    video_id = path_parts[1]
+
+        if video_id and VIDEO_ID_PATTERN.fullmatch(video_id):
+            return video_id
+
+        return None
+
+    except (ValueError, IndexError):
+        return None
