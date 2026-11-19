@@ -1,313 +1,426 @@
+
 """
-theme.py — RetailIQ's design system.
-
-Concept: a shopkeeper's ledger reimagined as a dashboard. Warm paper
-background, a serif masthead like a ledger book's title page, monospace
-for figures (like a receipt or POS display), hairline rules instead of
-card shadows, brass and deep teal as the two accent colors.
-
-Palette
--------
-ink        #1C2430   primary text
-ink_soft   #5B6472   secondary text / captions
-paper      #F6F4EF   app background
-surface    #FFFFFF   card / input backgrounds
-rule       #DDD6C4   hairline dividers
-brass      #B8843A   primary accent (positive emphasis, active states)
-teal       #1F6F5C   secondary accent (categories, secondary series)
-rose       #A23E48   tertiary accent (alerts, negative values)
-
-Type
-----
-Display : "Fraunces"      — masthead, section headers
-UI      : "IBM Plex Sans" — body text, labels, buttons
-Data    : "IBM Plex Mono" — KPI figures, tables, SQL code
+RetailIQ Design System
+Clean, modern analytics dashboard with consistent light-theme contrast.
 """
 
-INK = "#1C2430"
-INK_SOFT = "#5B6472"
-PAPER = "#F6F4EF"
+# ---------------------------------------------------------
+# COLOR PALETTE
+# ---------------------------------------------------------
+
+INK = "#172B4D"
+INK_SOFT = "#52647A"
+
+PAPER = "#F4F7FB"
 SURFACE = "#FFFFFF"
-RULE = "#DDD6C4"
-BRASS = "#B8843A"
-BRASS_DARK = "#96692A"
-TEAL = "#1F6F5C"
-ROSE = "#A23E48"
+RULE = "#DFE6EF"
 
-CHART_SEQUENCE = [BRASS, TEAL, ROSE, INK_SOFT, "#7A8B99", "#D8B45C"]
+BRASS = "#2563EB"
+BRASS_DARK = "#1D4ED8"
+TEAL = "#0F766E"
+ROSE = "#DC4C64"
+
+CHART_SEQUENCE = [
+    BRASS,
+    TEAL,
+    "#8B5CF6",
+    "#E59B35",
+    ROSE,
+    "#64748B",
+]
+
+# ---------------------------------------------------------
+# GLOBAL CSS
+# ---------------------------------------------------------
 
 CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-/*
-  RetailIQ ships one deliberate palette (a warm ledger, not a SaaS default)
-  and does not adapt to the browser's Light/Dark/System theme setting.
-  Every rule below is paired — background AND text color set together,
-  with !important — so switching Streamlit's built-in theme toggle can't
-  leave one half updated and the other stuck, which is what causes
-  invisible (same-color-as-background) text.
-*/
+/* ---------- Global application ---------- */
 
 :root {{
-    color-scheme: light !important;
+    color-scheme: light;
 }}
 
 html, body {{
-    color-scheme: light !important;
+    background-color: {PAPER} !important;
 }}
 
-/* ---- Global surface + text pairing ---- */
 [data-testid="stAppViewContainer"],
-[data-testid="stApp"],
 [data-testid="stMain"],
-.main, .block-container {{
+[data-testid="stMainBlockContainer"] {{
     background-color: {PAPER} !important;
     color: {INK} !important;
-    font-family: 'IBM Plex Sans', sans-serif;
 }}
 
 [data-testid="stHeader"] {{
     background-color: {PAPER} !important;
 }}
 
-/* Generic text elements: headings, paragraphs, labels, list items */
-h1, h2, h3, h4, h5, h6,
-p, span, label, li,
-[data-testid="stMarkdownContainer"],
-[data-testid="stMarkdownContainer"] * ,
-[data-testid="stCaptionContainer"],
-[data-testid="stCaptionContainer"] *,
-[data-testid="stWidgetLabel"] {{
-    color: {INK} !important;
+.block-container {{
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 1500px;
 }}
 
-/* ---- Sidebar: paired background + text, including its own markdown/caption text ---- */
+/* ---------- Typography ---------- */
+
+html, body, [class*="st-"] {{
+    font-family: "Inter", "Segoe UI", sans-serif;
+}}
+
+h1, h2, h3, h4, h5, h6 {{
+    color: {INK} !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.025em;
+}}
+
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li {{
+    color: {INK} !important;
+    line-height: 1.65;
+}}
+
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p {{
+    color: {INK_SOFT} !important;
+}}
+
+/* ---------- Sidebar ---------- */
+
 [data-testid="stSidebar"] {{
     background-color: {SURFACE} !important;
     border-right: 1px solid {RULE};
 }}
-[data-testid="stSidebar"] * {{
+
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] strong,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4 {{
     color: {INK} !important;
 }}
-[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {{
+
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
     color: {INK_SOFT} !important;
 }}
 
-/* ---- Masthead ---- */
+/* ---------- Masthead ---------- */
+
 .riq-masthead {{
-    border-bottom: 2px solid {INK};
-    padding-bottom: 0.9rem;
-    margin-bottom: 1.6rem;
-}}
-.riq-masthead h1 {{
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
-    font-size: 2.6rem;
-    line-height: 1.1;
-    margin: 0;
-    color: {INK} !important;
-}}
-.riq-masthead p {{
-    font-family: 'IBM Plex Sans', sans-serif;
-    color: {INK_SOFT} !important;
-    font-size: 0.98rem;
-    margin: 0.35rem 0 0 0;
-}}
-
-/* ---- KPI row ---- */
-.riq-kpi-row {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0;
+    background: linear-gradient(120deg, #FFFFFF 0%, #EFF5FF 100%);
+    border: 1px solid {RULE};
+    border-left: 5px solid {BRASS};
+    border-radius: 14px;
+    padding: 1.5rem 1.8rem;
     margin-bottom: 1.8rem;
 }}
+
+.riq-masthead h1 {{
+    color: {INK} !important;
+    font-size: 2.35rem;
+    font-weight: 750;
+    margin: 0;
+    line-height: 1.2;
+}}
+
+.riq-masthead p {{
+    color: {INK_SOFT} !important;
+    margin: 0.45rem 0 0 0;
+    font-size: 1rem;
+}}
+
+/* ---------- KPI cards ---------- */
+
+.riq-kpi-row {{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+}}
+
 .riq-kpi {{
-    border-top: 2px solid {INK};
-    padding: 0.7rem 1.2rem 0 0;
-}}
-.riq-kpi .riq-kpi-value {{
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.9rem;
-    font-weight: 500;
-    color: {INK} !important;
-    letter-spacing: -0.01em;
-}}
-.riq-kpi .riq-kpi-label {{
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.85rem;
-    color: {INK_SOFT} !important;
-    margin-top: 0.15rem;
+    background-color: {SURFACE};
+    border: 1px solid {RULE};
+    border-top: 4px solid {BRASS};
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    min-width: 0;
+    box-shadow: 0 2px 8px rgba(23, 43, 77, 0.04);
 }}
 
-/* ---- Section labels ---- */
+.riq-kpi-value {{
+    color: {INK} !important;
+    font-size: 1.7rem;
+    font-weight: 750;
+    overflow-wrap: anywhere;
+}}
+
+.riq-kpi-label {{
+    color: {INK_SOFT} !important;
+    font-size: 0.88rem;
+    margin-top: 0.35rem;
+    font-weight: 500;
+}}
+
+/* ---------- Section labels ---------- */
+
 .riq-section-label {{
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.8rem;
     color: {INK_SOFT} !important;
-    border-bottom: 1px solid {RULE};
-    padding-bottom: 0.4rem;
-    margin: 0.2rem 0 1rem 0;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    padding: 0.8rem 1rem;
+    background-color: #EAF0F8;
+    border: 1px solid {RULE};
+    border-radius: 9px;
+    margin-bottom: 1rem;
 }}
 
-/* ---- Tabs: underline style, no pill chrome ---- */
+/* ---------- Tabs ---------- */
+
 [data-testid="stTabs"] {{
-    background-color: transparent !important;
-}}
-[data-testid="stTabs"] button, [data-testid="stTabs"] button p {{
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.95rem;
-    color: {INK_SOFT} !important;
-    background-color: transparent !important;
-}}
-[data-testid="stTabs"] [aria-selected="true"], [data-testid="stTabs"] [aria-selected="true"] p {{
-    color: {INK} !important;
-    font-weight: 600;
-    border-bottom: 2px solid {BRASS} !important;
-}}
-[data-testid="stTabs"] [data-baseweb="tab-highlight"] {{
-    background-color: {BRASS} !important;
-}}
-[data-testid="stTabs"] [data-baseweb="tab-border"] {{
-    background-color: {RULE} !important;
+    background: transparent !important;
 }}
 
-/* ---- Buttons ---- */
-.stButton > button, .stDownloadButton > button {{
-    font-family: 'IBM Plex Sans', sans-serif;
-    background-color: {INK} !important;
-    color: {PAPER} !important;
-    border: 1px solid {INK} !important;
-    border-radius: 3px;
-    font-weight: 500;
-    padding: 0.4rem 1rem;
+[data-testid="stTabs"] [role="tablist"] {{
+    gap: 0.5rem;
+    border-bottom: 1px solid {RULE};
 }}
-.stButton > button p, .stDownloadButton > button p {{
-    color: {PAPER} !important;
+
+[data-testid="stTabs"] button[role="tab"] {{
+    background: transparent !important;
+    color: {INK_SOFT} !important;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
 }}
-.stButton > button:hover, .stDownloadButton > button:hover {{
+
+[data-testid="stTabs"] button[role="tab"] p {{
+    color: {INK_SOFT} !important;
+}}
+
+[data-testid="stTabs"] button[aria-selected="true"] {{
+    background-color: {SURFACE} !important;
+    border-bottom: 3px solid {BRASS} !important;
+}}
+
+[data-testid="stTabs"] button[aria-selected="true"] p {{
+    color: {BRASS_DARK} !important;
+    font-weight: 700;
+}}
+
+/* ---------- Buttons ---------- */
+
+.stButton > button,
+.stDownloadButton > button {{
+    background-color: {BRASS} !important;
+    color: #FFFFFF !important;
+    border: 1px solid {BRASS} !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    min-height: 2.5rem;
+    transition: background-color 0.15s ease;
+}}
+
+.stButton > button p,
+.stDownloadButton > button p {{
+    color: #FFFFFF !important;
+}}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {{
     background-color: {BRASS_DARK} !important;
     border-color: {BRASS_DARK} !important;
-    color: {SURFACE} !important;
 }}
+
 .stButton > button:focus-visible {{
-    outline: 2px solid {BRASS};
+    outline: 3px solid #93C5FD !important;
     outline-offset: 2px;
 }}
 
-/* Example-question chips: same shape, quieter, ink-soft text on paper */
-.riq-chip > button {{
+/* ---------- Example question buttons ---------- */
+
+.riq-chip > div > button {{
     background-color: {SURFACE} !important;
-    color: {INK_SOFT} !important;
-    border: 1px solid {RULE} !important;
-    font-size: 0.85rem;
-    padding: 0.25rem 0.75rem;
-}}
-.riq-chip > button p {{
-    color: {INK_SOFT} !important;
-}}
-.riq-chip > button:hover {{
-    border-color: {BRASS} !important;
     color: {INK} !important;
-    background-color: {SURFACE} !important;
+    border: 1px solid {RULE} !important;
+    border-radius: 9px !important;
 }}
-.riq-chip > button:hover p {{
+
+.riq-chip > div > button p {{
     color: {INK} !important;
 }}
 
-/* ---- Inputs ---- */
-.stTextInput input, .stTextArea textarea {{
-    font-family: 'IBM Plex Mono', monospace;
-    background-color: {SURFACE} !important;
-    border: 1px solid {RULE} !important;
-    color: {INK} !important;
-    -webkit-text-fill-color: {INK};
+.riq-chip > div > button:hover {{
+    border-color: {BRASS} !important;
+    background-color: #EFF5FF !important;
 }}
-.stTextInput input::placeholder, .stTextArea textarea::placeholder {{
+
+/* ---------- Text inputs and text areas ---------- */
+
+.stTextInput input,
+.stTextArea textarea {{
+    background-color: {SURFACE} !important;
+    color: {INK} !important;
+    -webkit-text-fill-color: {INK} !important;
+    border: 1px solid #C8D3E0 !important;
+    border-radius: 8px !important;
+}}
+
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder {{
     color: {INK_SOFT} !important;
+    -webkit-text-fill-color: {INK_SOFT} !important;
     opacity: 1;
 }}
-.stTextInput input:focus, .stTextArea textarea:focus {{
+
+.stTextInput input:focus,
+.stTextArea textarea:focus {{
     border-color: {BRASS} !important;
-    box-shadow: 0 0 0 1px {BRASS};
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
 }}
 
-/* ---- Alerts: quieter, rule-bordered instead of tinted pill boxes ---- */
+/* ---------- Select boxes and multiselect ---------- */
+
+[data-baseweb="select"] > div {{
+    background-color: {SURFACE} !important;
+    border-color: #C8D3E0 !important;
+    border-radius: 8px !important;
+}}
+
+[data-baseweb="select"] input,
+[data-baseweb="select"] span {{
+    color: {INK} !important;
+}}
+
+/* ---------- Widget labels ---------- */
+
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label,
+[data-testid="stCheckbox"] label,
+[data-testid="stToggle"] label {{
+    color: {INK} !important;
+    font-weight: 550;
+}}
+
+/* ---------- Alerts ---------- */
+
 [data-testid="stAlert"] {{
-    border-radius: 2px;
+    border-radius: 9px !important;
     border: 1px solid {RULE} !important;
-    background-color: {SURFACE} !important;
-}}
-[data-testid="stAlert"] * {{
-    color: {INK} !important;
-}}
-[data-testid="stAlertContentInfo"] svg, [data-testid="stAlertContentWarning"] svg,
-[data-testid="stAlertContentError"] svg, [data-testid="stAlertContentSuccess"] svg {{
-    fill: {INK} !important;
 }}
 
-/* ---- Dataframes / tables ---- */
-[data-testid="stDataFrame"] {{
-    font-family: 'IBM Plex Mono', monospace;
-    border: 1px solid {RULE};
-}}
-[data-testid="stDataFrame"] * {{
+[data-testid="stAlert"] p {{
     color: {INK} !important;
-    background-color: {SURFACE} !important;
 }}
 
-/* ---- Code blocks (SQL) — dark chip on purpose, so text must be paper-colored ---- */
-.stCodeBlock, pre {{
-    background-color: {INK} !important;
-}}
-.stCodeBlock *, pre code, pre span {{
-    font-family: 'IBM Plex Mono', monospace !important;
-    color: {PAPER} !important;
-}}
-:not(pre) > code {{
-    color: {INK} !important;
-    background-color: {RULE} !important;
-}}
+/* ---------- Expanders ---------- */
 
-/* ---- Expander ---- */
 [data-testid="stExpander"] {{
     background-color: {SURFACE} !important;
     border: 1px solid {RULE} !important;
-}}
-[data-testid="stExpander"] summary, [data-testid="stExpander"] summary * {{
-    color: {INK} !important;
+    border-radius: 9px !important;
 }}
 
-/* ---- Metric (used sparingly) ---- */
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary p {{
+    color: {INK} !important;
+    font-weight: 600;
+}}
+
+/* ---------- Data tables ---------- */
+
+[data-testid="stDataFrame"] {{
+    border: 1px solid {RULE};
+    border-radius: 9px;
+    overflow: hidden;
+}}
+
+/* ---------- Metrics ---------- */
+
+[data-testid="stMetric"] {{
+    background-color: {SURFACE};
+    border: 1px solid {RULE};
+    border-radius: 10px;
+    padding: 0.9rem;
+}}
+
 [data-testid="stMetricValue"] {{
-    font-family: 'IBM Plex Mono', monospace;
     color: {INK} !important;
+    font-weight: 750;
 }}
-[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * {{
-    font-family: 'IBM Plex Sans', sans-serif;
+
+[data-testid="stMetricLabel"] {{
     color: {INK_SOFT} !important;
 }}
 
-/* ---- Sliders ---- */
-[data-testid="stSlider"] [role="slider"] {{
-    background-color: {BRASS} !important;
-}}
-[data-testid="stTickBarMin"], [data-testid="stTickBarMax"] {{
-    color: {INK_SOFT} !important;
+/* ---------- SQL code blocks ---------- */
+
+.stCodeBlock,
+pre {{
+    background-color: #172B4D !important;
+    border-radius: 9px !important;
 }}
 
-/* ---- Toggle / checkbox ---- */
-[data-testid="stToggle"] label p, [data-testid="stCheckbox"] label p {{
+.stCodeBlock pre,
+.stCodeBlock code,
+pre code {{
+    color: #F8FAFC !important;
+    font-family: "Consolas", monospace !important;
+}}
+
+/* ---------- Slider ---------- */
+
+[data-testid="stSlider"] {{
     color: {INK} !important;
 }}
 
-/* ---- Divider ---- */
+/* ---------- Dividers ---------- */
+
 hr {{
     border-color: {RULE} !important;
 }}
+
+/* ---------- Responsive layout ---------- */
+
+@media (max-width: 900px) {{
+    .riq-kpi-row {{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }}
+
+    .riq-masthead h1 {{
+        font-size: 1.9rem;
+    }}
+}}
+
+@media (max-width: 520px) {{
+    .riq-kpi-row {{
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }}
+
+    .riq-kpi {{
+        padding: 0.8rem;
+    }}
+
+    .riq-kpi-value {{
+        font-size: 1.3rem;
+    }}
+
+    .block-container {{
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }}
+}}
+
 </style>
 """
 
+
+# ---------------------------------------------------------
+# HELPER FUNCTIONS
+# ---------------------------------------------------------
 
 def inject():
     import streamlit as st
@@ -317,46 +430,70 @@ def inject():
 def masthead(title: str, subtitle: str):
     import streamlit as st
     st.markdown(
-        f'<div class="riq-masthead"><h1>{title}</h1><p>{subtitle}</p></div>',
+        f'<div class="riq-masthead">'
+        f'<h1>{title}</h1>'
+        f'<p>{subtitle}</p>'
+        f'</div>',
         unsafe_allow_html=True,
     )
 
 
 def kpi_row(items):
-    """items: list of (label, value) tuples."""
+    """Render KPI cards from a list of (label, value) tuples."""
     import streamlit as st
+
     cells = "".join(
-        f'<div class="riq-kpi"><div class="riq-kpi-value">{value}</div>'
-        f'<div class="riq-kpi-label">{label}</div></div>'
+        f'<div class="riq-kpi">'
+        f'<div class="riq-kpi-value">{value}</div>'
+        f'<div class="riq-kpi-label">{label}</div>'
+        f'</div>'
         for label, value in items
     )
-    st.markdown(f'<div class="riq-kpi-row">{cells}</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        f'<div class="riq-kpi-row">{cells}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def section_label(text: str):
     import streamlit as st
-    st.markdown(f'<div class="riq-section-label">{text}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="riq-section-label">{text}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def apply_chart_style(fig, height=380):
-    """Applies the shared visual style to a Plotly figure.
-    Backgrounds are set explicitly (not transparent) so the chart always
-    reads correctly regardless of the page's resolved theme — a transparent
-    background would silently inherit whatever's behind it, including a
-    dark theme background that'd make our ink-colored text invisible."""
+    """Apply the RetailIQ palette to Plotly charts."""
+
     fig.update_layout(
-        font_family="IBM Plex Sans, sans-serif",
+        font_family="Inter, sans-serif",
         font_color=INK,
-        paper_bgcolor=PAPER,
-        plot_bgcolor=PAPER,
-        title_font_family="Fraunces, serif",
+        paper_bgcolor=SURFACE,
+        plot_bgcolor=SURFACE,
         title_font_size=18,
         title_font_color=INK,
-        margin=dict(l=10, r=10, t=48, b=10),
+        title_font_family="Inter, sans-serif",
+        margin=dict(l=15, r=15, t=55, b=15),
         height=height,
         colorway=CHART_SEQUENCE,
-        legend=dict(bgcolor=PAPER, font_color=INK),
+        legend=dict(
+            bgcolor=SURFACE,
+            font_color=INK,
+        ),
     )
-    fig.update_xaxes(gridcolor=RULE, zerolinecolor=RULE, color=INK)
-    fig.update_yaxes(gridcolor=RULE, zerolinecolor=RULE, color=INK)
+
+    fig.update_xaxes(
+        gridcolor=RULE,
+        zerolinecolor=RULE,
+        color=INK_SOFT,
+    )
+
+    fig.update_yaxes(
+        gridcolor=RULE,
+        zerolinecolor=RULE,
+        color=INK_SOFT,
+    )
+
     return fig
