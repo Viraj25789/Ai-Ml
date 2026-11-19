@@ -209,13 +209,15 @@ GitHub Actions automatically runs the test suite on pushes and pull requests.
 - Verify generated queries and their results before using them for business decisions.
 - The project is a portfolio and learning application, not a production retail management system.
 
+
 ## Future Improvements
 
-- Add automated tests for SQL queries and data processing.
-- Improve customer segment descriptions.
-- Add more data quality checks.
-- Improve AI-generated SQL validation.
+- Add meaningful business labels to customer segments.
+- Expand data quality and validation checks.
+- Improve AI-generated SQL accuracy and validation.
 - Add project screenshots and a verified live demo.
+- Add more business-focused analytical reports.
+
 
 ## Author
 
