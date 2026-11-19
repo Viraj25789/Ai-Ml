@@ -8,6 +8,8 @@ Run: python seed_data.py
 import os
 import sqlite3
 import random
+import argparse
+import shutil
 from datetime import date, timedelta
 
 random.seed(42)
@@ -79,7 +81,25 @@ def random_date(start_year=2023, end=None):
     return (start + timedelta(days=random.randint(0, delta))).isoformat()
 
 
-def build():
+def build(reset=False):
+    if os.path.exists(DB_PATH):
+        if not reset:
+            raise SystemExit(
+                "Database already exists. To rebuild it safely, run: "
+                "python seed_data.py --reset"
+            )
+
+        backup_path = DB_PATH + ".backup"
+        counter = 1
+
+        while os.path.exists(backup_path):
+            backup_path = DB_PATH + f".backup.{counter}"
+            counter += 1
+
+        shutil.copy2(DB_PATH, backup_path)
+        os.remove(DB_PATH)
+        print(f"Existing database backed up to: {backup_path}")
+
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     with open(SCHEMA_PATH) as f:
@@ -152,4 +172,15 @@ def build():
 
 
 if __name__ == "__main__":
-    build()
+    parser = argparse.ArgumentParser(
+        description="Generate the RetailIQ synthetic retail database."
+    )
+
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Back up the existing database and generate a fresh one."
+    )
+
+    args = parser.parse_args()
+    build(reset=args.reset)

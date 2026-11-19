@@ -137,8 +137,10 @@ with st.sidebar:
     st.markdown("**Stack**")
     st.caption("Python · SQLite · Streamlit · scikit-learn · Groq")
     st.divider()
-    st.markdown("**Source**")
-    st.caption("Add your GitHub link here once pushed.")
+    st.markdown("**Source Code**")
+    st.markdown(
+    "[View RetailIQ on GitHub](https://github.com/Viraj25789/Ai-Ml/tree/main/Data-Analytics/RetailIQ/retailiq_4)"
+    )
 
 # ---------------------------------------------------------------------------
 theme.masthead("RetailIQ", "Analytics over a small electronics retail business.")
@@ -286,14 +288,20 @@ with tab2:
                     "to enable open-ended questions beyond the 60 built-ins."
                 )
             else:
+                
                 with st.spinner("Writing a query for that..."):
+                    generated_sql = ""
+                    safe = False
+                    reason = "SQL validation could not be completed."
+
                     try:
                         generated_sql = llm_sql.generate_sql(user_q)
                         safe, reason = llm_sql.is_safe_select(generated_sql)
+
                     except Exception as e:
-                        st.error(f"Couldn't reach the model: {e}")
-                        safe = False
-                        generated_sql = ""
+                        reason = str(e)
+                        st.error(f"SQL generation or validation failed: {e}")
+
 
                 if generated_sql and not safe:
                     st.error(f"Generated query was rejected for safety: {reason}")
@@ -316,15 +324,33 @@ with tab3:
         "a starting point for deciding who to target with which campaign."
     )
 
+    
     rfm_sql = """
-    SELECT c.customer_id, c.customer_name,
-           julianday('2026-01-01') - julianday(MAX(o.order_date)) AS recency_days,
-           COUNT(DISTINCT o.order_id) AS frequency,
-           SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS monetary
+    WITH reference_date AS (
+        SELECT MAX(date(order_date)) AS as_of_date
+        FROM orders
+    )
+    SELECT
+        c.customer_id,
+        c.customer_name,
+        CAST(
+            julianday(reference_date.as_of_date)
+            - julianday(MAX(date(o.order_date)))
+            AS INTEGER
+        ) AS recency_days,
+        COUNT(DISTINCT o.order_id) AS frequency,
+        SUM(
+            oi.quantity * oi.unit_price * (1 - oi.discount)
+        ) AS monetary
     FROM customers c
-    JOIN orders o ON c.customer_id = o.customer_id
-    JOIN order_items oi ON o.order_id = oi.order_id
-    GROUP BY c.customer_id, c.customer_name
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    CROSS JOIN reference_date
+    GROUP BY
+        c.customer_id,
+        c.customer_name
     """
     rfm = run_query(rfm_sql)
 
@@ -360,15 +386,23 @@ with tab3:
 # TAB 4 — SQL Playground
 # ---------------------------------------------------------------------------
 with tab4:
-    theme.section_label("Runs directly against the database. SELECT statements only.")
+    theme.section_label(
+        "Runs against a read-only database connection. "
+        "Only single SELECT / WITH queries are allowed."
+    )
 
     default_query = "SELECT * FROM customers LIMIT 10;"
-    query_text = st.text_area("SQL query", value=default_query, height=150)
+    query_text = st.text_area(
+        "SQL query",
+        value=default_query,
+        height=150
+    )
 
     if st.button("Run query"):
-        if not query_text.strip().lower().startswith("select") and \
-           not query_text.strip().lower().startswith("with"):
-            st.error("Only SELECT / WITH queries run here.")
+        safe, reason = llm_sql.is_safe_select(query_text)
+
+        if not safe:
+            st.error(f"Query rejected: {reason}")
         else:
             try:
                 result = run_query_readonly(query_text)

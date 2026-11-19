@@ -1,111 +1,195 @@
-# RetailIQ
+# RetailIQ — Retail Analytics Platform
 
-A small analytics platform built on top of a synthetic Indian electronics-retail
-dataset (customers, products, categories, employees, orders). I built this after
-working through ~60 SQL practice questions (basic filtering → aggregation → joins
-→ business questions → interview-level window functions/subqueries) — instead of
-leaving them as a folder of `.sql` files, I turned them into an actual product:
-a dashboard, a natural-language query tool, and a basic ML feature.
+RetailIQ is a Python-based retail analytics application built using a synthetic Indian electronics retail dataset.
 
-**Live demo:** _add your Streamlit Cloud link here once deployed_
-**SQL practice write-up:** see [`queries/`](./queries) — all 60 queries, organized
-by difficulty level, each one commented with the original question.
+It helps explore business performance, ask questions about retail data using SQL, and identify customer groups using RFM analysis and KMeans clustering.
 
-## What's in it
+## Features
 
-| Tab | What it does |
+### 1. Business Dashboard
+- Total customers and orders
+- Revenue overview
+- Monthly revenue trends
+- Revenue by product category
+- Top products by revenue
+- Payment method distribution
+
+### 2. Ask Your Data
+Ask business questions in natural language.
+
+The application:
+- Searches a library of predefined SQL queries first.
+- Uses TF-IDF similarity to find relevant queries.
+- Can use a Groq language model as an optional SQL-generation fallback.
+- Executes generated queries using a read-only SQLite connection.
+
+Example questions:
+- Who are my top customers?
+- Which products have low stock?
+- What is the monthly revenue?
+- Which category generates the most revenue?
+
+### 3. Customer Segmentation
+Uses RFM analysis:
+
+- **Recency:** How recently a customer placed an order.
+- **Frequency:** How often a customer placed orders.
+- **Monetary:** How much a customer spent.
+
+KMeans clustering groups customers based on these three measures.
+
+### 4. SQL Playground
+- Run custom SQL queries.
+- Explore the retail database.
+- Browse the predefined SQL query collection.
+- Supports read-only SELECT queries.
+
+## Technology Stack
+
+| Area | Technologies |
 |---|---|
-| 📈 Dashboard | KPIs + charts: monthly revenue, revenue by category, top 10 products, payment method split |
-| 💬 Ask Your Data | Type a question in plain English. First checks a library of 60 hand-verified SQL reports for a close match; if nothing fits, an LLM (Groq, free tier) writes a fresh query on the spot — so you're not limited to the 60 questions I originally practiced |
-| 🧩 Customer Segments | RFM (Recency/Frequency/Monetary) analysis + KMeans clustering to group customers into segments |
-| 🛠️ SQL Playground | Write and run your own `SELECT` queries against the same database, or browse all 60 practiced queries |
+| Programming | Python |
+| Data Analysis | Pandas, NumPy |
+| Database | SQLite |
+| Dashboard | Streamlit |
+| Visualisation | Plotly |
+| Machine Learning | scikit-learn |
+| Text Retrieval | TF-IDF, cosine similarity |
+| AI Integration | Groq API |
 
-## Why "Ask Your Data" is retrieval-first, not LLM-first
+## Project Structure
 
-The library of 60 queries is checked before the model ever gets called. If
-there's a confident match, that's what runs — it's already tested, it's
-free, and it can't hallucinate a wrong column name. The LLM only writes a
-new query when nothing in the library fits, or if you explicitly ask it to
-try again. That's a genuine hybrid retrieval-augmented pattern, not just a
-chatbot wrapper, and it's a distinction worth bringing up if an interviewer
-asks how the feature works.
-
-**Guardrails on the LLM path**, since letting a model generate SQL against a
-real database is exactly the kind of thing that goes wrong if you're not
-careful:
-- The model is only ever asked for a single `SELECT` — the prompt says so explicitly
-- Before running anything, the generated SQL is checked against a blocklist
-  (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `ATTACH`, `PRAGMA`, etc.)
-  and rejected if it contains more than one statement
-- As a second line of defense, LLM-generated and playground queries run
-  against a SQLite connection opened in **read-only mode** — even a query
-  that somehow got past the filter physically cannot write to the database
-
-### Enabling the AI fallback
-
-The app works fully without this — it just won't offer AI-generated queries
-beyond the 60 built-ins. To turn it on:
-
-1. Get a free key at [console.groq.com/keys](https://console.groq.com/keys) (no card needed)
-2. Locally: copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml`
-   and paste your key in
-3. On Streamlit Community Cloud: go to your app → **Settings → Secrets** and add:
-   ```toml
-   GROQ_API_KEY = "your-key-here"
-   ```
-
-## Project structure
-
-```
-retailiq/
-├── app.py                  # Streamlit app (all 4 tabs)
-├── schema.sql               # Database schema
-├── seed_data.py              # Generates the synthetic dataset -> retailiq.db
-├── query_library.py           # The 60 queries + descriptions, used by "Ask Your Data"
-├── queries/
-│   ├── level1_basic.sql
-│   ├── level2_aggregation.sql
-│   ├── level3_joins.sql
-│   ├── level4_business.sql
-│   └── level5_challenge.sql
+```text
+retailiq_4/
+│
+├── app.py
+├── seed_data.py
+├── schema.sql
+├── query_library.py
+├── llm_sql.py
+├── theme.py
 ├── requirements.txt
-└── README.md
+├── README.md
+│
+└── queries/
+    ├── level1_basic.sql
+    ├── level2_aggregation.sql
+    ├── level3_joins.sql
+    ├── level4_business.sql
+    └── level5_challenge.sql
 ```
 
-## Running it locally
+## Dataset
+
+This project uses synthetically generated retail data.
+
+The generator creates:
+- 220 customers
+- 30 products
+- 18 employees
+- 650 orders
+- Multiple order items per order
+
+The dataset includes customer details, product information, order dates, payment methods, quantities and discounts.
+
+**Note:** This is sample data for demonstration and learning. It does not represent actual business transactions.
+
+## Installation and Setup
+
+### Requirements
+
+- Python 3.10 or newer recommended
+- pip
+- Git
+
+### Step 1: Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/retailiq.git
-cd retailiq
-pip install -r requirements.txt
-python seed_data.py        # builds retailiq.db (~650 orders, 220 customers)
+git clone https://github.com/Viraj25789/Ai-Ml.git
+```
+
+### Step 2: Open the RetailIQ folder
+
+```bash
+cd Ai-Ml/Data-Analytics/RetailIQ/retailiq_4
+```
+
+### Step 3: Create a virtual environment
+
+Windows:
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+### Step 4: Install dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### Step 5: Generate the database
+
+```bash
+python seed_data.py
+```
+
+This creates the SQLite database using the schema and synthetic data generator.
+
+### Step 6: Run the application
+
+```bash
 streamlit run app.py
 ```
 
-It'll open at `http://localhost:8501`.
+Open the local address displayed in your terminal, usually:
 
-## Deploying it for free
+```text
+http://localhost:8501
+```
 
-**Streamlit Community Cloud** (easiest, no card required):
-1. Push this repo to GitHub (make sure `retailiq.db` is either committed, or
-   have Streamlit run `seed_data.py` on startup — I do the latter, see the
-   note in `app.py`).
-2. Go to [share.streamlit.io](https://share.streamlit.io), sign in with GitHub.
-3. Pick this repo, set the main file to `app.py`, deploy.
-4. Takes about 2 minutes to spin up. Free tier is enough for a portfolio demo.
+## Optional: Enable AI-generated SQL
 
-**Alternative:** Render.com's free web service tier also works — set the
-start command to `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`.
+The application can use a Groq API key for questions that do not match the predefined SQL query library.
 
-## What I'd add next
+1. Create an API key from [Groq Console](https://console.groq.com/keys).
+2. Set the `GROQ_API_KEY` environment variable.
 
-- Swap the synthetic dataset for a real one (Kaggle has a few decent retail
-  datasets) to talk about data cleaning in interviews too.
-- Log every LLM-generated query (question, SQL, whether it succeeded) so I
-  can see where it struggles and fold the good ones back into the library —
-  turning the fallback into a feedback loop instead of a one-shot guess.
-- Cache the RFM computation instead of recomputing it on every slider change.
+Windows PowerShell:
 
-## Tech
+```powershell
+$env:GROQ_API_KEY="your-api-key"
+```
 
-Python, SQLite, Streamlit, Plotly, scikit-learn (KMeans, TF-IDF).
+3. Start the application in the same terminal:
+
+```bash
+streamlit run app.py
+```
+
+Never upload your API key to GitHub or commit it inside a source file.
+
+The dashboard, predefined SQL queries, customer segmentation and SQL playground can be explored without configuring the optional AI service.
+
+## Important Notes
+
+- The database is generated locally when it does not exist.
+- The data is synthetic and intended for demonstration.
+- AI-generated SQL may not always answer a question correctly.
+- Verify generated queries and their results before using them for business decisions.
+- The project is a portfolio and learning application, not a production retail management system.
+
+## Future Improvements
+
+- Add automated tests for SQL queries and data processing.
+- Improve customer segment descriptions.
+- Add more data quality checks.
+- Improve AI-generated SQL validation.
+- Add project screenshots and a verified live demo.
+
+## Author
+
+**Viraj Parmar**
+
+GitHub: [Viraj25789](https://github.com/Viraj25789)

@@ -4,7 +4,7 @@ An LLM-powered fallback for questions that don't match anything in the
 60-query library. Kept in its own module so the safety rules are easy to
 audit in one place.
 
-Uses Groq's free API tier (fast Llama models, no card required) via plain
+Uses Groq's API (GPT-OSS models) via plain HTTP — no extra SDK dependency.
 HTTP — no extra SDK dependency. Requires a GROQ_API_KEY, read via
 Streamlit secrets or an environment variable. If no key is configured this
 whole feature quietly disables itself; the rest of the app works fine
@@ -20,7 +20,10 @@ GROQ_MODEL = "openai/gpt-oss-20b"
 # Tried in order; if one is retired/unavailable for the account, the next is
 # used automatically. Groq periodically deprecates model names, so this list
 # is worth revisiting occasionally — check https://console.groq.com/docs/models
-FALLBACK_MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound-mini"]
+FALLBACK_MODELS = [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+]
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SCHEMA_DESCRIPTION = """
