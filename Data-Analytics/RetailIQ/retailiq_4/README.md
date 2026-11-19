@@ -172,6 +172,35 @@ Never upload your API key to GitHub or commit it inside a source file.
 
 The dashboard, predefined SQL queries, customer segmentation and SQL playground can be explored without configuring the optional AI service.
 
+
+## Automated Testing
+
+RetailIQ includes automated tests using Python's built-in `unittest` framework.
+
+### Run tests locally
+
+From the `retailiq_4` directory:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+### Test coverage
+
+The automated test suite checks:
+
+- All 60 saved SQL queries are available.
+- Saved SQL queries pass safety validation.
+- All saved SQL queries execute successfully.
+- Database record counts match expected values.
+- Unsafe SQL statements are rejected.
+- No orphan records exist in the database.
+- Foreign-key integrity is maintained.
+- Existing databases are protected from accidental overwrites.
+
+GitHub Actions automatically runs the test suite on pushes and pull requests.
+
+
 ## Important Notes
 
 - The database is generated locally when it does not exist.
