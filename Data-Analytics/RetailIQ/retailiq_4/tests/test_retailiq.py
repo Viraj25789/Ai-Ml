@@ -105,6 +105,30 @@ class RetailIQTests(unittest.TestCase):
         result = self.connection.execute(
             "PRAGMA foreign_key_check"
         ).fetchall()
+    
+    def test_ai_sql_output_is_cleaned(self):
+        cases = [
+            (
+                "```sql\nSELECT * FROM customers;\n```",
+                "SELECT * FROM customers",
+            ),
+            (
+                "SELECT COUNT(*) FROM orders;",
+                "SELECT COUNT(*) FROM orders",
+            ),
+            (
+                "  SELECT * FROM products  ",
+                "SELECT * FROM products",
+            ),
+        ]
+
+        for raw_sql, expected in cases:
+            with self.subTest(raw_sql=raw_sql):
+                self.assertEqual(
+                    llm_sql.clean_sql_output(raw_sql),
+                    expected,
+                )
+
 
         self.assertEqual(result, [])
 
