@@ -83,6 +83,11 @@ class AprioriModel:
                 sup_b = item_counts[frozenset([b])] / n
                 lift  = support_ab / (sup_a * sup_b) if (sup_a * sup_b) > 0 else 0
 
+                # Keep only positive associations, as promised in the README.
+                # Lift <= 1 means the pair is no more likely than chance.
+                if lift <= 1:
+                    continue
+
                 conf_a = support_ab / sup_a if sup_a > 0 else 0
                 if conf_a >= min_conf:
                     rules_list.append({
