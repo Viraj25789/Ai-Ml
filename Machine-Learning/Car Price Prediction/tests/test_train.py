@@ -59,6 +59,25 @@ class CarPricePipelineTests(unittest.TestCase):
         self.assertGreater(result["mae"], 0)
         self.assertIsNotNone(result["adjusted_r2"])
 
+    def test_load_data_treats_infinite_features_as_missing_and_drops_infinite_prices(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "cars.csv"
+            frame = pd.DataFrame({
+                "year": [2018, 2019],
+                "mileage": [12000, float("inf")],
+                "tax": [145, 145],
+                "mpg": [55.0, 50.0],
+                "engineSize": [1.0, 1.2],
+                "model": ["Fiesta", "Focus"],
+                "transmission": ["Manual", "Manual"],
+                "fuelType": ["Petrol", "Petrol"],
+                "price": [9000, float("inf")],
+            })
+            frame.to_csv(path, index=False)
+            result = load_data(path)
+            self.assertEqual(len(result), 1)
+            self.assertTrue(pd.isna(result.iloc[0]["mileage"]))
+
 
 if __name__ == "__main__":
     unittest.main()
