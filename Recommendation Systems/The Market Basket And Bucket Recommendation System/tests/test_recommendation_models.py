@@ -8,15 +8,15 @@ def create_dataset(path):
     # Strong positive association: Laptop and Mouse co-occur in four baskets,
     # while each also appears once alone. Keyboard provides a third item.
     rows = [
-        {"TransactionID": i, "UserID": i, "Items": "Laptop, Mouse"}
+        {"TransactionID": i, "UserID": (i - 1) % 3 + 101, "Items": "Laptop, Mouse"}
         for i in range(1, 5)
     ]
     rows.extend([
-        {"TransactionID": 5, "UserID": 5, "Items": "Laptop"},
-        {"TransactionID": 6, "UserID": 6, "Items": "Mouse"},
+        {"TransactionID": 5, "UserID": 102, "Items": "Laptop"},
+        {"TransactionID": 6, "UserID": 103, "Items": "Mouse"},
     ])
     rows.extend([
-        {"TransactionID": i, "UserID": i, "Items": "Keyboard"}
+        {"TransactionID": i, "UserID": (i - 1) % 3 + 101, "Items": "Keyboard"}
         for i in range(7, 11)
     ])
     pd.DataFrame(rows).to_csv(path, index=False)
