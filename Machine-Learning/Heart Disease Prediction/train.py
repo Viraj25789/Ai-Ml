@@ -37,6 +37,13 @@ def load_data(path=DATA_PATH):
     df = df[df[TARGET].isin([0, 1])]
     if df.empty:
         raise ValueError("No valid labeled rows in dataset.")
+    class_counts = df[TARGET].value_counts()
+    if len(class_counts) != 2:
+        raise ValueError("HeartDisease must contain both classes 0 and 1.")
+    if class_counts.min() < 2:
+        raise ValueError(
+            "Each HeartDisease class needs at least two rows for a stratified split."
+        )
     return df
 
 
