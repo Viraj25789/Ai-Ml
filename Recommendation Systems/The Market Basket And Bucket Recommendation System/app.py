@@ -237,32 +237,55 @@ def upload():
             return Response("The uploaded CSV is empty.", status=400, mimetype="text/plain")
 
         preview = pd.read_csv(io.BytesIO(file_bytes))
-        column_map = {column.strip().lower(): column for column in preview.columns}
+        # Normalize header whitespace so the model classes see the same schema
+        # that the upload validator checks.
+        preview.columns = [str(column).strip() for column in preview.columns]
+        column_map = {column.lower(): column for column in preview.columns}
+        items_column = column_map.get("items")
         user_column = column_map.get("userid") or column_map.get("user_id") or column_map.get("user")
-        if "items" not in column_map or not user_column:
+        if not items_column or not user_column:
             return Response(
                 "CSV must contain Items and UserID columns.",
                 status=400,
                 mimetype="text/plain",
             )
-        if preview.empty or preview[column_map["items"]].dropna().empty:
-            return Response("CSV contains no usable purchase rows.", status=400, mimetype="text/plain")
 
-        unique_name = f"upload_{uuid.uuid4().hex}_{filename}"
-        new_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
-        with open(new_path, "wb") as uploaded_file:
-            uploaded_file.write(file_bytes)
-
-        # Build both models before switching the active dataset.
-        new_apriori_model = AprioriModel(new_path)
-        new_cf_model = CollaborativeFiltering(new_path)
-        if new_cf_model.user_item_matrix is None or not new_cf_model.all_items:
-            os.remove(new_path)
+        preview[items_column] = preview[items_column].fillna("").astype(str).str.strip()
+        preview[user_column] = preview[user_column].fillna("").astype(str).str.strip()
+        usable_rows = preview[items_column].ne("") & preview[user_column].ne("")
+        preview = preview.loc[usable_rows].copy()
+        if preview.empty:
             return Response(
-                "Could not build recommendations from this dataset. Check Items and UserID values.",
+                "CSV must contain at least one row with both a UserID and Items value.",
                 status=400,
                 mimetype="text/plain",
             )
+
+        unique_name = f"upload_{uuid.uuid4().hex}_{filename}"
+        new_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+        # Save the normalized dataframe, not the original bytes, so header
+        # cleanup and row validation are reflected in the active dataset.
+        preview.to_csv(new_path, index=False)
+
+        try:
+            # Build both models before switching the active dataset.
+            new_apriori_model = AprioriModel(new_path)
+            new_cf_model = CollaborativeFiltering(new_path)
+            if (
+                new_cf_model.user_item_matrix is None
+                or not new_cf_model.all_items
+                or not new_apriori_model.all_items
+            ):
+                os.remove(new_path)
+                return Response(
+                    "Could not build recommendations from this dataset. Check Items and UserID values.",
+                    status=400,
+                    mimetype="text/plain",
+                )
+        except Exception:
+            if os.path.exists(new_path):
+                os.remove(new_path)
+            raise
 
         DATA_PATH = new_path
         apriori_model = new_apriori_model
