@@ -1,133 +1,94 @@
 # Ford Car Price Prediction
 
-A simple machine learning project that explores Ford used-car data and predicts car prices using **Linear Regression**.
+A regression project that estimates the selling price of used Ford cars from vehicle specifications.
 
-The project includes basic **Exploratory Data Analysis (EDA)**, categorical encoding, feature scaling, train/test splitting, model training, and evaluation using **R²** and **Adjusted R²**.
+## Business problem
 
-## Project Overview
+Used-car prices vary with model, age, mileage, transmission, fuel type, tax, fuel economy and engine size. This project explores those relationships and builds a reproducible baseline model to estimate car prices.
 
-The dataset contains Ford used-car information such as:
+## Dataset
 
-- Model
-- Year
-- Price
-- Transmission
-- Mileage
-- Fuel Type
-- Tax
-- MPG
-- Engine Size
+The project uses the Ford used-car dataset in `data/ford.csv`.
 
-The target variable is **`price`**.
+**Target:** `price`
 
-## Workflow
+**Features:** `model`, `year`, `transmission`, `mileage`, `fuelType`, `tax`, `mpg`, and `engineSize`.
 
-1. Load the Ford car dataset using Pandas.
-2. Inspect the dataset using `head()`, `info()`, `describe()`, and shape/null-value checks.
-3. Perform EDA using Matplotlib and Seaborn.
-4. Encode categorical features using:
-   - One-hot encoding
-   - Label encoding
-5. Scale numerical features using `StandardScaler`.
-6. Split the data into training and testing sets.
-7. Train a Linear Regression model.
-8. Make predictions on the test data.
-9. Evaluate the model using:
-   - R² Score
-   - Adjusted R² Score
+## Modeling workflow
 
-## Project Structure
+The recommended, reproducible training workflow is implemented in `train.py`:
+
+1. Validate required columns and remove rows with missing target prices.
+2. Split data into training and holdout sets (80/20, fixed random seed).
+3. Impute missing numeric values with the median and scale numeric features.
+4. Impute missing categorical values with the most frequent value and one-hot encode categories.
+5. Fit preprocessing and Linear Regression together in a Scikit-learn Pipeline. All preprocessing is learned from the training split only.
+6. Evaluate on the untouched holdout set using MAE, RMSE, R² and adjusted R².
+7. Save the fitted pipeline to `models/ford_price_model.joblib`.
+
+The notebook `main.ipynb` is retained as an exploratory learning artifact. Use `train.py` for the clean training and evaluation workflow.
+
+## Project structure
 
 ```text
-ford-car-price-prediction/
-│
+Car Price Prediction/
 ├── data/
 │   └── ford.csv
-│
-├── main.ipynb
+├── models/                 # Created when training runs
+├── tests/
+│   └── test_train.py
+├── main.ipynb              # Exploratory analysis
+├── train.py                # Reproducible model pipeline
 ├── requirements.txt
-├── README.md
-└── .gitignore
+└── README.md
 ```
 
-## Technologies Used
-
-- Python
-- Pandas
-- NumPy
-- Matplotlib
-- Seaborn
-- Scikit-learn
-- Jupyter Notebook
-
-## Installation
-
-Clone the repository:
+## Setup
 
 ```bash
-git clone <your-github-repository-url>
-cd ford-car-price-prediction
+python -m venv .venv
 ```
 
-Create and activate a virtual environment:
-
-### Windows
-
+Windows:
 ```bash
-python -m venv venv
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 Install dependencies:
-
 ```bash
 pip install -r requirements.txt
 ```
 
-## Run the Project
+## Train the model
 
-Start Jupyter Notebook:
+Run from this project directory:
 
 ```bash
-jupyter notebook
+python train.py
 ```
 
-Open:
+The script prints holdout metrics and creates `models/ford_price_model.joblib`.
 
-```text
-main.ipynb
+## Run tests
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
-Then run the notebook cells from top to bottom.
+## Evaluation metrics
 
-## Model
+- **MAE:** average absolute prediction error, in the dataset's price units.
+- **RMSE:** penalizes larger prediction errors more heavily.
+- **R²:** proportion of target variation explained by the model.
+- **Adjusted R²:** R² adjusted for the number of input features; omitted when the holdout sample is too small for a valid calculation.
 
-The project uses **Linear Regression** to predict the price of Ford cars.
+## Limitations
 
-Two approaches for categorical variables are explored:
+- This is a baseline Linear Regression model, not a production vehicle valuation service.
+- The data represents Ford listings and may not generalize to other brands, regions or market periods.
+- Prices depend on factors not present in the dataset, such as condition, service history, accident history and location.
+- Model performance should be judged from the holdout metrics printed by the training script, not assumed in advance.
 
-1. **One-Hot Encoding**
-2. **Label Encoding**
+## Tech stack
 
-The numerical features are scaled using `StandardScaler`.
-
-## Evaluation
-
-The model is evaluated using:
-
-**R² Score**
-Measures how well the model explains variation in the target price.
-
-**Adjusted R²**
-Provides an adjusted version of R² that considers the number of input features used by the model.
-
-## features
-
-- Data loading and inspection
-- Data cleaning basics
-- Exploratory Data Analysis
-- Feature encoding
-- Feature scaling
-- Train/test splitting
-- Linear Regression
-- Model evaluation
+Python, Pandas, NumPy, Matplotlib, Seaborn, Scikit-learn, Joblib, Jupyter and unittest.
