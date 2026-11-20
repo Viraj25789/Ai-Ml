@@ -175,3 +175,48 @@ def test_invalid_database_input_does_not_delete_existing_data(database):
     result = database.execute_query("SELECT title FROM books")
 
     assert result["title"].tolist() == ["Book A"]
+
+
+
+def test_unknown_stock_status_is_removed(cleaner):
+    df = pd.DataFrame({
+        "Title": ["Known", "Unknown"],
+        "Price": ["£10.00", "£12.00"],
+        "Stock_Status": ["In stock", "status unavailable"],
+        "Rating": ["Four", "Five"],
+    })
+
+    result = cleaner.transform(df)
+
+    assert result["Title"].tolist() == ["Known"]
+
+
+@pytest.mark.parametrize(
+    ("price", "rating", "stock"),
+    [
+        (float("inf"), 4, True),
+        (10.0, 4.5, True),
+        (10.0, 4, "False"),
+    ],
+)
+def test_database_rejects_invalid_values_without_replacing_data(
+    database, price, rating, stock
+):
+    existing = pd.DataFrame({
+        "Title": ["Existing Book"],
+        "Price": [9.99],
+        "Rating": [4],
+        "In_Stock": [True],
+    })
+    invalid = pd.DataFrame({
+        "Title": ["Invalid Book"],
+        "Price": [price],
+        "Rating": [rating],
+        "In_Stock": [stock],
+    })
+
+    assert database.save_dataframe(existing) is True
+    assert database.save_dataframe(invalid) is False
+
+    saved = database.execute_query("SELECT title FROM books")
+    assert saved["title"].tolist() == ["Existing Book"]
