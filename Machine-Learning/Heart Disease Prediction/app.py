@@ -1,65 +1,74 @@
-import streamlit as st
-import pandas as pd
+"""Streamlit demo for the educational heart-disease ML project.
+
+This is not a clinical tool and must not be used for diagnosis or treatment.
+"""
+from pathlib import Path
+
 import joblib
+import pandas as pd
+import streamlit as st
 
-# Load saved model, scaler, and expected columns
-model = joblib.load("ML/heart_disease/knn_heart_model.pkl")
-scaler = joblib.load("ML/heart_disease/heart_scaler.pkl")
-expected_columns = joblib.load("ML/heart_disease/heart_columns.pkl")
+ROOT = Path(__file__).resolve().parent
+MODEL_PATH = ROOT / "models" / "heart_disease_pipeline.joblib"
 
-st.title("Heart Stroke Prediction by akarsh")
-st.markdown("Provide the following details to check your heart stroke risk:")
+st.set_page_config(page_title="Heart Disease ML Demo", page_icon="❤️", layout="centered")
+st.title("Heart Disease Prediction — ML Demo")
+st.warning(
+    "Educational demonstration only. This model is not clinically validated, "
+    "cannot diagnose heart disease, and must not guide medical decisions. "
+    "Consult a qualified healthcare professional about health concerns."
+)
 
-# Collect user input
-age = st.slider("Age", 18, 100, 40)
-sex = st.selectbox("Gender", ["M", "F"])
-chest_pain = st.selectbox("Chest Pain Type", ["ATA", "NAP", "TA", "ASY"])
-resting_bp = st.number_input("Resting Blood Pressure (mm Hg)", 80, 200, 120)
-cholesterol = st.number_input("Cholesterol (mg/dL)", 100, 600, 200)
-fasting_bs = st.selectbox("Blood Sugar > 120 mg/dL", [0, 1])
-resting_ecg = st.selectbox("Resting ECG", ["Normal", "ST", "LVH"])
-max_hr = st.slider("Max Heart Rate", 60, 220, 150)
-exercise_angina = st.selectbox("Exercise-Induced Angina", ["Y", "N"])
-oldpeak = st.slider("Oldpeak (ST Depression)", 0.0, 6.0, 1.0)
-st_slope = st.selectbox("ST Slope", ["Up", "Flat", "Down"])
+@st.cache_resource
+def load_model():
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model not found at {MODEL_PATH}. Run 'python train.py' first."
+        )
+    return joblib.load(MODEL_PATH)
 
-# When Predict is clicked
-if st.button("Predict"):
+with st.form("prediction_form"):
+    st.subheader("Enter example data")
+    age = st.number_input("Age (years)", min_value=18, max_value=100, value=45)
+    sex = st.selectbox("Sex", ["M", "F"])
+    chest_pain = st.selectbox("Chest pain category", ["ATA", "NAP", "TA", "ASY"])
+    resting_bp = st.number_input("Resting blood pressure (mm Hg)", min_value=1, max_value=250, value=120)
+    cholesterol = st.number_input("Cholesterol (mg/dL)", min_value=1, max_value=700, value=200)
+    fasting_bs = st.selectbox("Fasting blood sugar above 120 mg/dL?", [0, 1])
+    resting_ecg = st.selectbox("Resting ECG category", ["Normal", "ST", "LVH"])
+    max_hr = st.number_input("Maximum heart rate", min_value=40, max_value=250, value=150)
+    exercise_angina = st.selectbox("Exercise-induced angina", ["N", "Y"])
+    oldpeak = st.number_input("Oldpeak", min_value=-3.0, max_value=8.0, value=0.0, step=0.1)
+    st_slope = st.selectbox("ST slope", ["Up", "Flat", "Down"])
+    submitted = st.form_submit_button("Run model demo")
 
-    # Create a raw input dictionary
-    raw_input = {
-        'Age': age,
-        'RestingBP': resting_bp,
-        'Cholesterol': cholesterol,
-        'FastingBS': fasting_bs,
-        'MaxHR': max_hr,
-        'Oldpeak': oldpeak,
-        'Sex_' + sex: 1,
-        'ChestPainType_' + chest_pain: 1,
-        'RestingECG_' + resting_ecg: 1,
-        'ExerciseAngina_' + exercise_angina: 1,
-        'ST_Slope_' + st_slope: 1
-    }
-
-    # Create input dataframe
-    input_df = pd.DataFrame([raw_input])
-
-    # Fill in missing columns with 0s
-    for col in expected_columns:
-        if col not in input_df.columns:
-            input_df[col] = 0
-
-    # Reorder columns
-    input_df = input_df[expected_columns]
-
-    # Scale the input
-    scaled_input = scaler.transform(input_df)
-
-    # Make prediction
-    prediction = model.predict(scaled_input)[0]
-
-    # Show result
-    if prediction == 1:
-        st.error("⚠️ High Risk of Heart Disease")
-    else:
-        st.success("✅ Low Risk of Heart Disease")
+if submitted:
+    try:
+        model = load_model()
+        row = pd.DataFrame([{
+            "Age": age,
+            "Sex": sex,
+            "ChestPainType": chest_pain,
+            "RestingBP": resting_bp,
+            "Cholesterol": cholesterol,
+            "FastingBS": fasting_bs,
+            "RestingECG": resting_ecg,
+            "MaxHR": max_hr,
+            "ExerciseAngina": exercise_angina,
+            "Oldpeak": oldpeak,
+            "ST_Slope": st_slope,
+        }])
+        prediction = int(model.predict(row)[0])
+        probability = float(model.predict_proba(row)[0, 1])
+        st.metric("Model-estimated positive class probability", f"{probability:.1%}")
+        st.write(
+            "The model classified this example as positive."
+            if prediction == 1
+            else "The model classified this example as negative."
+        )
+        st.caption(
+            "This output is a machine-learning classification, not an estimate "
+            "of your actual medical risk. Do not use it to make health decisions."
+        )
+    except Exception as exc:
+        st.error(f"Unable to run the demo: {exc}")
