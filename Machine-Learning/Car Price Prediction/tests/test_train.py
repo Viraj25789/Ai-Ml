@@ -64,7 +64,7 @@ class CarPricePipelineTests(unittest.TestCase):
             path = Path(temp) / "cars.csv"
             frame = pd.DataFrame({
                 "year": [2018, 2019],
-                "mileage": [12000, float("inf")],
+                "mileage": [float("inf"), 12000],
                 "tax": [145, 145],
                 "mpg": [55.0, 50.0],
                 "engineSize": [1.0, 1.2],
