@@ -5,19 +5,22 @@ from model.collaborative_filtering import CollaborativeFiltering
 
 
 def create_dataset(path):
-    df = pd.DataFrame(
-        [
-            {"TransactionID": 1, "UserID": 101, "Items": "Laptop, Mouse"},
-            {"TransactionID": 2, "UserID": 101, "Items": "Laptop, Keyboard"},
-            {"TransactionID": 3, "UserID": 102, "Items": "Laptop, Mouse"},
-            {"TransactionID": 4, "UserID": 102, "Items": "Laptop, Keyboard"},
-            {"TransactionID": 5, "UserID": 103, "Items": "Mouse, Keyboard"},
-            {"TransactionID": 6, "UserID": 103, "Items": "Mouse, Laptop"},
-        ]
-    )
-    df.to_csv(path, index=False)
+    # Strong positive association: Laptop and Mouse co-occur in four baskets,
+    # while each also appears once alone. Keyboard provides a third item.
+    rows = [
+        {"TransactionID": i, "UserID": i, "Items": "Laptop, Mouse"}
+        for i in range(1, 5)
+    ]
+    rows.extend([
+        {"TransactionID": 5, "UserID": 5, "Items": "Laptop"},
+        {"TransactionID": 6, "UserID": 6, "Items": "Mouse"},
+    ])
+    rows.extend([
+        {"TransactionID": i, "UserID": i, "Items": "Keyboard"}
+        for i in range(7, 11)
+    ])
+    pd.DataFrame(rows).to_csv(path, index=False)
     return path
-
 
 def test_apriori_loads_products_and_generates_rules(tmp_path):
     path = create_dataset(tmp_path / "transactions.csv")
