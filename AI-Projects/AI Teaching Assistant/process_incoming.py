@@ -61,12 +61,27 @@ def load_embeddings(path=EMBEDDINGS_PATH):
 
 
 def retrieve(frame, query, top_k=5):
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("Please enter a non-empty question.")
+    if not isinstance(top_k, int) or top_k < 1:
+        raise ValueError("top_k must be a positive integer.")
+
     query_vector = create_embedding(query)
-    vectors = np.vstack(frame["embedding"].map(
-        lambda value: np.asarray(value, dtype=float)
-    ).to_list())
-    if vectors.ndim != 2 or vectors.shape[1] != len(query_vector):
+    try:
+        vectors = np.vstack(frame["embedding"].map(
+            lambda value: np.asarray(value, dtype=float)
+        ).to_list())
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Stored transcript embeddings are invalid.") from exc
+
+    if (
+        vectors.ndim != 2
+        or vectors.shape[1] != len(query_vector)
+        or not np.isfinite(vectors).all()
+        or not np.isfinite(query_vector).all()
+    ):
         raise ValueError("Stored embeddings do not match the Ollama embedding model.")
+
     scores = cosine_similarity(vectors, query_vector.reshape(1, -1)).ravel()
     indices = np.argsort(scores)[::-1][:top_k]
     results = frame.iloc[indices].copy()
@@ -97,8 +112,8 @@ STUDENT QUESTION:
 Answer:"""
 
 
-def answer_question(query, index):
-    chunks = retrieve(index, query)
+def answer_question(query, index, top_k=5):
+    chunks = retrieve(index, query, top_k=top_k)
     result = ollama_post(
         "/api/generate",
         {"model": CHAT_MODEL, "prompt": build_prompt(query, chunks), "stream": False},
@@ -119,7 +134,7 @@ def main():
     if not query:
         parser.error("Please enter a non-empty question.")
     index = load_embeddings()
-    print("\n" + answer_question(query, index))
+    print("\n" + answer_question(query, index, top_k=args.top_k))
 
 
 if __name__ == "__main__":
