@@ -65,16 +65,8 @@ The CSV must contain:
 | `UserID` | Yes | Customer identifier |
 | `Items` | Yes | Comma-separated products in the basket |
 
-Example:
+Example (the basket must be quoted because it contains commas):
 
-```csv
-TransactionID,UserID,Items
-1,101,Laptop,Mouse
-2,101,Keyboard,Mouse
-3,102,Smartphone,Headphones
-```
-
-For CSV parsing, keep the entire comma-separated basket in one quoted `Items` field, for example:
 
 ```csv
 TransactionID,UserID,Items
