@@ -114,47 +114,58 @@ class AprioriModel:
 
     def _build_markov(self):
         """
-        Build a first-order Markov transition table from per-user purchase sequences.
+        Build transitions between consecutive purchase transactions for each user.
 
-        For each user, sort their transactions by TransactionID and treat the list
-        of items bought across transactions as an ordered sequence.  For every
-        consecutive pair (item_a → item_b) we increment the transition counter.
-
-        If no UserID / TransactionID columns are found we fall back to using
-        within-basket item ordering (alphabetical), which is a weaker signal but
-        still better than nothing.
+        Items inside one basket have no reliable purchase order, so they are
+        never treated as sequential events. When transaction IDs are missing,
+        Markov predictions remain unavailable and predict_next can use Apriori.
         """
         try:
-            df      = pd.read_csv(self.data_path)
+            df = pd.read_csv(self.data_path)
             col_map = {c.lower(): c for c in df.columns}
 
-            items_col  = col_map.get("items", df.columns[0])
-            user_col   = col_map.get("userid") or col_map.get("user_id") or col_map.get("user")
-            tx_id_col  = col_map.get("transactionid") or col_map.get("transaction_id") or col_map.get("txid")
-
-            # Clean items column → list of item strings
-            df["_items_list"] = df[items_col].apply(
-                lambda x: [i.strip() for i in str(x).split(",")
-                            if i.strip() and i.strip().lower() != "nan"]
+            items_col = col_map.get("items", df.columns[0])
+            user_col = col_map.get("userid") or col_map.get("user_id") or col_map.get("user")
+            tx_id_col = (
+                col_map.get("transactionid")
+                or col_map.get("transaction_id")
+                or col_map.get("txid")
             )
 
-            if user_col and tx_id_col:
-                # Best path: use real per-user ordered transaction history
-                df_sorted = df.sort_values([user_col, tx_id_col])
-                for uid, grp in df_sorted.groupby(user_col):
-                    # Flatten all items bought by this user in order of purchase
-                    history = [item for items in grp["_items_list"] for item in items]
-                    for a, b in zip(history, history[1:]):
-                        self._transitions[a][b] += 1
-                        self._item_totals[a] += 1
-            else:
-                # Fallback: within-basket consecutive pairs (alphabetical order)
-                for items in df["_items_list"]:
-                    for a, b in zip(items, items[1:]):
-                        self._transitions[a][b] += 1
-                        self._item_totals[a] += 1
+            if not user_col or not tx_id_col:
+                return
 
-            print(f"[Markov] Transition table built: {len(self._transitions)} source items")
+            df["_items_list"] = df[items_col].apply(
+                lambda value: [
+                    item.strip()
+                    for item in str(value).split(",")
+                    if item.strip() and item.strip().lower() != "nan"
+                ]
+            )
+            df = df.dropna(subset=[user_col, tx_id_col])
+            if df.empty:
+                return
+
+            # Numeric IDs must sort numerically (1, 2, 10), not lexically (1, 10, 2).
+            numeric_ids = pd.to_numeric(df[tx_id_col], errors="coerce")
+            if numeric_ids.notna().all():
+                df["_tx_sort"] = numeric_ids
+            else:
+                df["_tx_sort"] = df[tx_id_col].astype(str)
+
+            for _, user_rows in df.sort_values("_tx_sort").groupby(user_col, sort=False):
+                baskets = [
+                    list(dict.fromkeys(items))
+                    for items in user_rows["_items_list"].tolist()
+                    if items
+                ]
+                for previous_basket, next_basket in zip(baskets, baskets[1:]):
+                    for previous_item in previous_basket:
+                        for next_item in next_basket:
+                            if previous_item == next_item:
+                                continue
+                            self._transitions[previous_item][next_item] += 1
+                            self._item_totals[previous_item] += 1
 
         except Exception as e:
             print(f"[Markov] Error building transition table: {e}")
