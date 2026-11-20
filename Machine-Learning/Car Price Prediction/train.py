@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -30,6 +31,10 @@ def load_data(path=DATA_PATH):
     data = data[required].copy()
     for column in NUMERIC_FEATURES + [TARGET]:
         data[column] = pd.to_numeric(data[column], errors="coerce")
+    # Infinite values are not valid measurements for model fitting.
+    for column in NUMERIC_FEATURES:
+        data.loc[~np.isfinite(data[column]), column] = np.nan
+    data.loc[~np.isfinite(data[TARGET]), TARGET] = np.nan
     data = data.dropna(subset=[TARGET])
     data = data[data[TARGET] > 0]
     if data.empty:
