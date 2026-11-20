@@ -55,6 +55,7 @@ class HeartDiseaseDataTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "heart.csv"
             frame = self.make_frame()
+            frame["RestingBP"] = frame["RestingBP"].astype(float)
             frame.loc[0, "RestingBP"] = float("inf")
             frame.to_csv(path, index=False)
             result = load_data(path)
