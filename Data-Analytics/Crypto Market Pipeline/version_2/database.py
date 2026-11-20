@@ -1,5 +1,7 @@
 import logging
+import math
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -51,7 +53,7 @@ class CryptoDatabase:
             market_cap REAL NOT NULL CHECK (market_cap >= 0),
             price_change_24h REAL NOT NULL,
             roi_percentage REAL,
-            extracted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            extracted_at TEXT NOT NULL
         );
         """
         try:
@@ -74,7 +76,7 @@ class CryptoDatabase:
             raise
 
     def save_dataframe(self, df: pd.DataFrame) -> bool:
-        """Validate and append one market snapshot to the history table."""
+        """Validate and append one uniquely timestamped market snapshot."""
         if not isinstance(df, pd.DataFrame) or df.empty:
             logger.warning("No market data supplied; skipping database insert.")
             return False
@@ -90,7 +92,13 @@ class CryptoDatabase:
         cleaned = df[available_columns].copy()
         cleaned = cleaned.rename(columns=self.COLUMN_MAPPING)
 
-        for column in ("current_price", "market_cap", "price_change_24h", "roi_percentage"):
+        numeric_columns = [
+            "current_price",
+            "market_cap",
+            "price_change_24h",
+            "roi_percentage",
+        ]
+        for column in numeric_columns:
             if column in cleaned.columns:
                 cleaned[column] = pd.to_numeric(cleaned[column], errors="coerce")
 
@@ -98,19 +106,37 @@ class CryptoDatabase:
         cleaned["symbol"] = cleaned["symbol"].astype("string").str.strip().str.lower()
 
         required_numeric = ["current_price", "market_cap", "price_change_24h"]
-        cleaned = cleaned.dropna(
-            subset=["asset_name", "symbol", *required_numeric]
-        )
-        cleaned = cleaned[
-            (cleaned["asset_name"] != "")
+        valid_rows = (
+            cleaned["asset_name"].notna()
+            & cleaned["symbol"].notna()
+            & (cleaned["asset_name"] != "")
             & (cleaned["symbol"] != "")
-            & (cleaned["current_price"] >= 0)
+        )
+        for column in required_numeric:
+            valid_rows &= cleaned[column].map(
+                lambda value: pd.notna(value) and math.isfinite(float(value))
+            )
+
+        cleaned = cleaned.loc[valid_rows].copy()
+        cleaned = cleaned[
+            (cleaned["current_price"] >= 0)
             & (cleaned["market_cap"] >= 0)
         ]
 
         if cleaned.empty:
             logger.warning("No valid market records remain after validation.")
             return False
+
+        if "roi_percentage" in cleaned.columns:
+            cleaned["roi_percentage"] = cleaned["roi_percentage"].map(
+                lambda value: (
+                    float(value)
+                    if pd.notna(value) and math.isfinite(float(value))
+                    else None
+                )
+            )
+        else:
+            cleaned["roi_percentage"] = None
 
         cleaned = cleaned.reindex(
             columns=[
@@ -124,19 +150,31 @@ class CryptoDatabase:
         )
         cleaned = cleaned.astype(object).where(pd.notna(cleaned), None)
 
+        # One timestamp per batch, with microseconds so rapid runs stay distinct.
+        snapshot_timestamp = datetime.now(timezone.utc).isoformat(
+            timespec="microseconds"
+        )
+
         insert_sql = """
         INSERT INTO market_data (
             asset_name, symbol, current_price, market_cap,
-            price_change_24h, roi_percentage
+            price_change_24h, roi_percentage, extracted_at
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
         try:
-            records = list(cleaned.itertuples(index=False, name=None))
+            records = [
+                (*record, snapshot_timestamp)
+                for record in cleaned.itertuples(index=False, name=None)
+            ]
             with self._get_connection() as connection:
                 connection.executemany(insert_sql, records)
-            logger.info("Inserted %s valid market records.", len(records))
+            logger.info(
+                "Inserted %s valid market records for snapshot %s.",
+                len(records),
+                snapshot_timestamp,
+            )
             return True
         except (sqlite3.Error, ValueError, TypeError):
             logger.exception("Failed to save market data.")
