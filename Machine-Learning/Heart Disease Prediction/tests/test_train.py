@@ -44,6 +44,22 @@ class HeartDiseaseDataTests(unittest.TestCase):
             self.assertTrue(pd.isna(result.loc[0, "RestingBP"]))
             self.assertTrue(pd.isna(result.loc[1, "Cholesterol"]))
 
+    def test_rejects_unexpected_target_labels(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "heart.csv"
+            self.make_frame((0, 1, 0, 1)).assign(HeartDisease=[0, 1, 2, 1]).to_csv(path, index=False)
+            with self.assertRaisesRegex(ValueError, "invalid labels"):
+                load_data(path)
+
+    def test_infinite_measurements_are_treated_as_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "heart.csv"
+            frame = self.make_frame()
+            frame.loc[0, "RestingBP"] = float("inf")
+            frame.to_csv(path, index=False)
+            result = load_data(path)
+            self.assertTrue(pd.isna(result.loc[0, "RestingBP"]))
+
 
 if __name__ == "__main__":
     unittest.main()
