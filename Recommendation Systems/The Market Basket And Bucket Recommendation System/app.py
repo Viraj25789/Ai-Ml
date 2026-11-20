@@ -10,7 +10,9 @@ Route overview:
   GET  /download_report → Generate and download a plain-text report
 """
 
+import io
 import os
+import uuid
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, Response
 from werkzeug.utils import secure_filename
@@ -20,11 +22,12 @@ from model.collaborative_filtering import CollaborativeFiltering
 
 # ── App setup ──────────────────────────────────────────────────────────────────
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(32)
 
 UPLOAD_FOLDER = "data"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
 
 DATA_PATH = os.path.join(UPLOAD_FOLDER, "default.csv")
 
@@ -218,18 +221,57 @@ def upload():
     global apriori_model, cf_model, DATA_PATH
 
     file = request.files.get("csv_file")
-    if not file or file.filename == "":
+    if not file or not file.filename:
+        return Response("Please choose a CSV file.", status=400, mimetype="text/plain")
+
+    filename = secure_filename(file.filename)
+    if not filename or not filename.lower().endswith(".csv"):
+        return Response("Only CSV files are allowed.", status=400, mimetype="text/plain")
+
+    try:
+        file_bytes = file.read()
+        if not file_bytes:
+            return Response("The uploaded CSV is empty.", status=400, mimetype="text/plain")
+
+        preview = pd.read_csv(io.BytesIO(file_bytes))
+        column_map = {column.strip().lower(): column for column in preview.columns}
+        user_column = column_map.get("userid") or column_map.get("user_id") or column_map.get("user")
+        if "items" not in column_map or not user_column:
+            return Response(
+                "CSV must contain Items and UserID columns.",
+                status=400,
+                mimetype="text/plain",
+            )
+        if preview.empty or preview[column_map["items"]].dropna().empty:
+            return Response("CSV contains no usable purchase rows.", status=400, mimetype="text/plain")
+
+        unique_name = f"upload_{uuid.uuid4().hex}_{filename}"
+        new_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+        with open(new_path, "wb") as uploaded_file:
+            uploaded_file.write(file_bytes)
+
+        # Build both models before switching the active dataset.
+        new_apriori_model = AprioriModel(new_path)
+        new_cf_model = CollaborativeFiltering(new_path)
+        if new_cf_model.user_item_matrix is None or not new_cf_model.all_items:
+            os.remove(new_path)
+            return Response(
+                "Could not build recommendations from this dataset. Check Items and UserID values.",
+                status=400,
+                mimetype="text/plain",
+            )
+
+        DATA_PATH = new_path
+        apriori_model = new_apriori_model
+        cf_model = new_cf_model
         return redirect(url_for("index"))
 
-    filename    = secure_filename(file.filename)
-    new_path    = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(new_path)
-
-    DATA_PATH     = new_path
-    apriori_model = AprioriModel(DATA_PATH)
-    cf_model      = CollaborativeFiltering(DATA_PATH)
-
-    return redirect(url_for("index"))
+    except (pd.errors.ParserError, UnicodeDecodeError, ValueError, OSError) as error:
+        return Response(
+            f"Could not process uploaded CSV: {error}",
+            status=400,
+            mimetype="text/plain",
+        )
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -356,4 +398,4 @@ Recommended Items    : {', '.join(profile['recommendations']) or 'No history fou
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
