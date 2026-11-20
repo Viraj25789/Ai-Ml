@@ -1,50 +1,93 @@
-# Data Analysis & Web Scraping
+# Python, Data Analytics & AI/ML Portfolio
 
-Welcome to my data extraction portfolio. This repository houses a collection of automated data pipelines that I engineered to extract, clean, and analyze web data. 
+Practical projects demonstrating Python development, data analytics, machine learning, data pipelines, recommendation systems and retrieval-augmented generation (RAG).
 
-The projects here demonstrate a progression from writing functional extraction scripts to architecting enterprise-grade backend microservices using Object-Oriented Programming (OOP), relational databases, and professional error handling.
+## Featured projects
 
-## 📂 Repository Structure
+### Data Analytics & Data Engineering
 
-This repository is divided into two main domains of data extraction: HTML Parsing and REST API Consumption. Both projects contain versioned histories showing the progression from flat-file CSV scripts to production-ready SQLite pipelines.
+| Project | What it demonstrates | Technologies |
+|---|---|---|
+| [RetailIQ](Data-Analytics/RetailIQ/retailiq_4/) | Retail database analysis, 60 SQL business questions, guarded natural-language SQL and dashboard | Python, SQL, SQLite, Streamlit |
+| [Crypto Market Pipeline](Data-Analytics/Crypto%20Market%20Pipeline/version_2/) | REST API extraction, validation, historical snapshots and market analysis | Python, Pandas, Requests, SQLite |
+| [Book Price Intelligence](Data-Analytics/Book%20Price%20Intelligence/version_4/) | Web scraping, data cleaning, database storage and exploratory analysis | Python, BeautifulSoup, Pandas, SQLite |
 
-### 1. `📁 bookpricetracker` (E-Commerce Price Intelligence)
-An automated ETL (Extract, Transform, Load) pipeline that scrapes product catalog data from an e-commerce storefront, sanitizes the data, and performs exploratory data analysis to find pricing trends.
-* **Extraction:** Navigates pagination and parses raw HTML using `BeautifulSoup` and `requests`.
-* **Transformation:** Uses `pandas` to clean currency symbols, normalize text strings into integers, and enforce strict domain constraints.
-* **Evolution:** 
-  * *Version 1:* Functional baseline extracting data to flat `.csv` files.
-  * *Version 2:* Enterprise upgrade featuring an OOP architecture, robust ETL cleaning engines, and a relational `SQLite` database with compound indexing.
+### Machine Learning
 
-### 2. `📁 market` (Live Crypto Market Pipeline)
-A resilient data engineering microservice that extracts real-time financial payloads from the public CoinGecko REST API, flattens the nested JSON structures, and persists the data.
-* **Extraction:** Connects to public REST endpoints, managing HTTP session pooling, request timeouts, and `HTTP 429 (Rate Limit)` exception handling.
-* **Transformation:** Automates the flattening of deeply nested JSON payloads using Pandas `json_normalize`.
-* **Evolution:**
-  * *Version 1:* Focuses on JSON parsing and Pandas data structuring.
-  * *Version 2:* Production-ready system with automated error logging, rate-limit handling, and SQLite persistence to track historical market trends.
+| Project | What it demonstrates | Technologies |
+|---|---|---|
+| [Customer Churn Intelligence](Machine-Learning/Customer%20Churn%20Intelligence/) | Churn analysis and leakage-aware preprocessing/model pipeline | Python, Pandas, Scikit-learn |
+| [Customer Churn Prediction](Machine-Learning/Customer%20Churn%20Prediction/) | Classification model comparison and imbalanced-data evaluation | Python, Pandas, Scikit-learn |
+| [Car Price Prediction](Machine-Learning/Car%20Price%20Prediction/) | Regression pipeline with numeric and categorical preprocessing | Python, Pandas, Scikit-learn |
+| [Heart Disease Prediction](Machine-Learning/Heart%20Disease%20Prediction/) | Classification pipeline and educational Streamlit interface | Python, Scikit-learn, Streamlit |
 
-## 🛠️ Core Technologies Used
-* **Languages:** Python 3.x, SQL
-* **Data Extraction:** `requests`, `BeautifulSoup4`, REST APIs, JSON Parsing
-* **Data Processing:** `pandas` (ETL, Data Cleaning, JSON Normalization)
-* **Storage:** `SQLite3` (Relational Databases, Table Constraints, Indexing)
-* **Software Engineering:** Object-Oriented Programming (OOP), `logging`, Exception Handling, Data Type Enforcement
+### AI & Generative AI
 
-## 🚀 How to Explore Locally
+| Project | What it demonstrates | Technologies |
+|---|---|---|
+| [VidBrain – YouTube Transcript Assistant](AI-Projects/VidBrain/) | Transcript-based question answering with RAG | Python, Streamlit, Hugging Face, Groq, FAISS |
+| [AI Teaching Assistant](AI-Projects/AI%20Teaching%20Assistant/) | Searches course transcripts and answers with video timestamps | Python, Whisper, Ollama, RAG |
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/yourusername/scraper.git](https://github.com/yourusername/scraper.git)
-   cd scraper
-   
-2. **Set up a virtual environment and install dependencies**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
+### Recommendation Systems
 
-3. **Navigate to the individual projects**
-   Each sub-directory (bookpricetracker/ and market/) contains its own specific instructions, source code, and analysis scripts. Navigate into the folder of your choice to run the pipelines.
+[Market Basket and Product Recommendation System](Recommendation%20Systems/The%20Market%20Basket%20And%20Bucket%20Recommendation%20System/) — association-rule recommendations, Markov-based next-item prediction and collaborative filtering.
 
-4. 
+## Skills demonstrated
+
+- **Programming:** Python
+- **Data analysis:** Pandas, NumPy, data cleaning, EDA, Matplotlib
+- **Databases:** SQL, SQLite, relational data modeling
+- **Machine learning:** Scikit-learn, classification, regression, model evaluation, preprocessing pipelines
+- **Data engineering:** REST APIs, web scraping, ETL, validation, logging
+- **AI/GenAI:** embeddings, vector similarity search, RAG, local LLM integration
+- **Applications:** Streamlit, Flask
+- **Engineering:** Git, GitHub Actions, automated testing, documentation
+
+## Repository structure
+
+```text
+Ai-Ml/
+├── AI-Projects/
+│   ├── AI Teaching Assistant/
+│   └── VidBrain/
+├── Data-Analytics/
+│   ├── Book Price Intelligence/
+│   ├── Crypto Market Pipeline/
+│   └── RetailIQ/
+├── Machine-Learning/
+│   ├── Car Price Prediction/
+│   ├── Customer Churn Intelligence/
+│   ├── Customer Churn Prediction/
+│   └── Heart Disease Prediction/
+└── Recommendation Systems/
+    └── The Market Basket And Bucket Recommendation System/
+```
+
+## Getting started
+
+Each project has its own README and requirements file. Open the project folder and follow its setup instructions. There is no single root-level requirements file.
+
+Example virtual environment:
+
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Install dependencies from the selected project's `requirements.txt`, then run its scripts or application as documented.
+
+## Notes
+
+- Numbered versions show project development over time; featured links point to the latest documented version.
+- Dataset and generated model/index requirements vary by project.
+- Machine-learning and health-related applications are educational demonstrations, not professional or medical advice.
+- API availability, model downloads and hardware requirements vary by project.
+
+## Contact
+
+**Viraj Parmar** · [GitHub @Viraj25789](https://github.com/Viraj25789)
