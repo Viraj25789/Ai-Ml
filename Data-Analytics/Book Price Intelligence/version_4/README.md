@@ -1,130 +1,198 @@
-# Enterprise E-Commerce Price Intelligence Pipeline
 
-An end-to-end, resilient data engineering pipeline that extracts product catalog data, performs data cleaning, persists records into an SQLite relational database, and generates analytical insights.
+# Book Price Intelligence Pipeline
 
-Built using Object-Oriented Programming (OOP) principles, thread-safe database connections, error handling, logging, and unit testing.
+An end-to-end Python data analytics project that collects book catalog data, cleans and validates records, stores them in SQLite, and generates business insights using Pandas and SQL.
 
----
+## Project Overview
 
-## 🏗️ System Architecture & Data Flow
+This project demonstrates a practical data pipeline using a real-world style workflow:
 
-+--------------------------+
-|  E-Commerce Target Site  |
-+--------------------------+
-|
-|  requests.Session() (HTTPS GET / Rate Limited)
-v
-+--------------------------+
-|   ECommerceScraper (OOP) | ---> Generates: pipeline.log
-+--------------------------+
-|
-|  Raw CSV Ingestion (data/raw_books.csv)
-v
-+--------------------------+
-|   DataCleaner (ETL)      | ---> Data Audit & Validation
-+--------------------------+
-|
-|  Clean Pandas DataFrame Transformed
-v
-+--------------------------------------------------+
-| DatabaseManager (SQLite Relational Persistence)  |
-+--------------------------------------------------+
-|                                          |
-v                                          v
-File Export: data/clean_books.csv       Table: books (Indexed Schema)
-|
-v
-+------------------------------+
-| CatalogAnalyzer (SQL Query)  |
-+------------------------------+
-|
-v
-Executive Insights Report
+1. Extract book information from Books to Scrape.
+2. Clean prices, ratings, titles, and stock information.
+3. Validate records and remove invalid data.
+4. Store the latest catalog in SQLite.
+5. Analyze prices, ratings, and stock availability.
+6. Generate an executive summary report.
 
+## Architecture
 
----
-
-## 🛠️ Key Technical Features
-
-1. **Robust HTTP Extraction Layer:**
-   * Utilizes `requests.Session()` for connection pooling.
-   * Defensive Exception handling for HTTP timeouts and status codes (`raise_for_status()`).
-   * Configured request headers and server-compliant rate-limiting (`time.sleep`).
-
-2. **Data Transformation & Integrity Engine:**
-   * Regex parsing for currency strings.
-   * Vectorized Pandas mappings for rating strings (`One` -> `1`).
-   * Outlier and missing record filtering with automated data logging.
-
-3. **Relational Persistence Layer (SQL):**
-   * SQLite table schema initialized with `CHECK` constraints (`price_gbp >= 0`, `rating BETWEEN 1 AND 5`).
-   * Compound indexing (`idx_books_rating_price`) on heavily queried aggregation columns for $O(\log N)$ search speed.
-   * Batch insertions performed via multi-row parameterized SQL queries.
-
-4. **Testing & Code Quality:**
-   * Full unit testing coverage using `pytest`.
-   * Standard Python Type Hinting and Google-style docstrings across all modules.
-
----
-
-## 📊 Database Schema Definition
-
-```sql
-CREATE TABLE books (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    price_gbp REAL NOT NULL CHECK(price_gbp >= 0),
-    rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-    in_stock BOOLEAN NOT NULL CHECK(in_stock IN (0, 1)),
-    extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_books_rating_price ON books(rating, price_gbp);
+```text
+Books to Scrape Website
+         |
+         v
+    scraper.py
+         |
+         v
+  data/raw_books.csv
+         |
+         v
+    cleaner.py
+         |
+         +------> data/clean_books.csv
+         |
+         v
+    database.py
+         |
+         v
+   SQLite Database
+         |
+         v
+    analysis.py
+         |
+         v
+  Business Insights
 ```
 
-## 🚀 Getting Started
+## Tech Stack
 
-1. **Prerequisite Installation**
-    * Ensure you have Python 3.9+ installed. Clone the repository and set up dependencies:
+| Technology | Purpose |
+|---|---|
+| Python | Pipeline development |
+| Requests | HTTP requests |
+| BeautifulSoup | HTML parsing |
+| Pandas | Data cleaning and analysis |
+| SQLite | Data storage |
+| SQL | Data retrieval |
+| Pytest | Automated testing |
 
+## Project Structure
 
-    * git clone [https://github.com/YOUR-USERNAME/price-intelligence-pipeline.git](https://github.com/YOUR-USERNAME/price-intelligence-pipeline.git)
-    cd price-intelligence-pipeline
+```text
+version_4/
+│
+├── data/
+│   ├── raw_books.csv
+│   ├── clean_books.csv
+│   └── ecommerce_catalog.db
+│
+├── scraper.py
+├── cleaner.py
+├── database.py
+├── analysis.py
+├── test_pipeline.py
+├── requirements.txt
+└── README.md
+```
 
-    * Create and activate virtual environment
-    python -m venv venv
-    source venv/bin/activate # On Windows use: venv\Scripts\activate
+## Getting Started
 
-    * Install dependencies
-    pip install -r requirements.txt
+### 1. Clone the repository
 
-2. **Execution Sequence**
-    * Run the complete pipeline end-to-end:
+```bash
+git clone https://github.com/Viraj25789/Ai-Ml.git
+```
 
+### 2. Navigate to the project
 
-    * 1. Execute Extraction Scraper
-    python scraper.py
+```bash
+cd Ai-Ml
+cd "Data-Analytics/Book Price Intelligence/version_4"
+```
 
-    * 2. Execute Transformation and Database Load
-    python cleaner.py
+### 3. Create a virtual environment
 
-    * 3. Generate Analytical Report
-    python analysis.py
+```bash
+python -m venv venv
+```
 
-3. **Run Unit Test Suite**
-    * To verify pipeline stability and execution assertions:
+Activate it on Windows:
 
-    pytest test_pipeline.py -v
+```bash
+venv\Scripts\activate
+```
 
+### 4. Install dependencies
 
-## 📝 Logging & Observability
+```bash
+pip install -r requirements.txt
+```
 
-All operational events, network failures, data drop counts, and execution metrics are logged simultaneously to the console and a local persistent file: pipeline.log.
+## Run the Pipeline
 
-Example log output:
+Execute these commands in order from the `version_4` directory.
 
-Plaintext
-2026-08-03 17:55:01,120 - INFO - Initializing scraper pipeline for 5 pages.
-2026-08-03 17:55:02,450 - INFO - Successfully extracted 20 items from page 1
-2026-08-03 17:55:08,110 - INFO - Database schema initialized and indices created successfully.
-2026-08-03 17:55:08,230 - INFO - Successfully inserted 100 rec
+**Step 1 — Extract data**
+
+```bash
+python scraper.py
+```
+
+Scrapes five catalog pages and saves the results to `data/raw_books.csv`.
+
+**Step 2 — Clean and store data**
+
+```bash
+python cleaner.py
+```
+
+Validates records, exports the cleaned CSV, and refreshes the SQLite database.
+
+**Step 3 — Generate analysis**
+
+```bash
+python analysis.py
+```
+
+Generates a report containing catalog statistics, inventory availability, price extremes, and price-rating correlation.
+
+## Run Tests
+
+```bash
+pytest test_pipeline.py -v
+```
+
+The test suite checks:
+
+- Price and rating conversion.
+- Stock status conversion.
+- Invalid record removal.
+- Missing column validation.
+- Empty dataset handling.
+- Database insertion.
+- Duplicate prevention.
+- Data preservation after invalid input.
+
+## Database Design
+
+The SQLite database contains a `books` table.
+
+| Column | Description |
+|---|---|
+| id | Unique book record ID |
+| title | Book title |
+| price_gbp | Book price |
+| rating | Rating from 1 to 5 |
+| in_stock | Availability status |
+| extracted_at | Database insertion timestamp |
+
+Database constraints protect price, rating, and stock values.
+
+## Key Business Questions
+
+This project helps answer:
+
+1. What is the average and median book price?
+2. Which books are the cheapest and most expensive?
+3. How many books are currently available?
+4. What is the average price for each rating?
+5. Is there a linear relationship between price and rating?
+
+## Data Source
+
+[Books to Scrape](https://books.toscrape.com/)
+
+A demonstration e-commerce website intended for practicing web scraping.
+
+## Future Improvements
+
+- Add scheduled data collection.
+- Track historical price changes.
+- Create interactive dashboards.
+- Add more detailed SQL analysis.
+- Monitor catalog changes over time.
+
+## Author
+
+**Viraj Parmar**
+
+GitHub: [Viraj25789](https://github.com/Viraj25789)
