@@ -4,6 +4,7 @@ Educational project only. This model is not a medical diagnostic tool.
 """
 from pathlib import Path
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -36,7 +37,7 @@ def load_data(path=DATA_PATH):
     # Infinite measurements cannot be handled by the preprocessing pipeline.
     # Treat them like other missing numeric measurements and impute from training data.
     for col in NUMERIC:
-        df.loc[~df[col].between(float("-inf"), float("inf")), col] = float("nan")
+        df.loc[~np.isfinite(df[col]), col] = float("nan")
     df = df.dropna(subset=[TARGET])
     invalid_targets = sorted(set(df[TARGET].unique()) - {0, 1})
     if invalid_targets:
