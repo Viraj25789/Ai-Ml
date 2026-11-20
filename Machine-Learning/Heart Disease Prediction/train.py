@@ -33,8 +33,14 @@ def load_data(path=DATA_PATH):
     # In this dataset, zero blood pressure/cholesterol values represent missing measurements.
     for col in ["RestingBP", "Cholesterol"]:
         df.loc[df[col] == 0, col] = float("nan")
+    # Infinite measurements cannot be handled by the preprocessing pipeline.
+    # Treat them like other missing numeric measurements and impute from training data.
+    for col in NUMERIC:
+        df.loc[~df[col].between(float("-inf"), float("inf")), col] = float("nan")
     df = df.dropna(subset=[TARGET])
-    df = df[df[TARGET].isin([0, 1])]
+    invalid_targets = sorted(set(df[TARGET].unique()) - {0, 1})
+    if invalid_targets:
+        raise ValueError(f"HeartDisease contains invalid labels: {invalid_targets}. Expected 0 or 1.")
     if df.empty:
         raise ValueError("No valid labeled rows in dataset.")
     class_counts = df[TARGET].value_counts()
