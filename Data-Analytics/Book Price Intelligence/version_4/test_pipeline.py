@@ -1,54 +1,177 @@
-import pytest
+
 import pandas as pd
-from bs4 import BeautifulSoup
+import pytest
+
 from cleaner import DataCleaner
+from database import DatabaseManager
+
 
 @pytest.fixture
 def sample_raw_dataframe():
-    """Provides a synthetic uncleaned raw dataset for transformer testing."""
     return pd.DataFrame({
-        'Title': ['Test Book A', 'Test Book B', 'Test Book C'],
-        'Price': ['£51.77', '£10.25', '£0.00'],
-        'Stock_Status': ['In stock (22 available)', 'In stock', 'Out of stock'],
-        'Rating': ['Three', 'Five', 'One']
+        "Title": ["Book A", "Book B", "Book C"],
+        "Price": ["£51.77", "£10.25", "£0.00"],
+        "Stock_Status": [
+            "In stock (22 available)",
+            "In stock",
+            "Out of stock",
+        ],
+        "Rating": ["Three", "Five", "One"],
     })
 
+
 @pytest.fixture
-def sample_html_element():
-    """Provides mock HTML representing a single product element on the target site."""
-    html = """
-    <article class="product_pod">
-        <h3><a title="A Light in the Attic">A Light in the ...</a></h3>
-        <p class="price_color">£51.77</p>
-        <p class="instock availability"><i class="icon-ok"></i>In stock</p>
-        <p class="star-rating Three"></p>
-    </article>
-    """
-    return BeautifulSoup(html, 'html.parser')
+def cleaner():
+    return DataCleaner()
 
-def test_data_cleaner_transform(sample_raw_dataframe):
-    """Tests if price stripping, rating mapping, and stock conversion perform accurately."""
+
+@pytest.fixture
+def database(tmp_path):
+    db_path = tmp_path / "test_catalog.db"
+    return DatabaseManager(str(db_path))
+
+
+def test_price_conversion(cleaner, sample_raw_dataframe):
+    result = cleaner.transform(sample_raw_dataframe)
+
+    assert result["Price"].tolist() == [51.77, 10.25, 0.00]
+    assert pd.api.types.is_numeric_dtype(result["Price"])
+
+
+def test_rating_conversion(cleaner, sample_raw_dataframe):
+    result = cleaner.transform(sample_raw_dataframe)
+
+    assert result["Rating"].tolist() == [3, 5, 1]
+    assert result["Rating"].dtype == int
+
+
+def test_stock_conversion(cleaner, sample_raw_dataframe):
+    result = cleaner.transform(sample_raw_dataframe)
+
+    assert result["In_Stock"].tolist() == [True, True, False]
+    assert result["In_Stock"].dtype == bool
+
+
+def test_invalid_records_are_removed(cleaner):
+    df = pd.DataFrame({
+        "Title": ["Valid", "", "Invalid Price", "Invalid Rating"],
+        "Price": ["£20.00", "£10.00", "unknown", "£15.00"],
+        "Stock_Status": ["In stock"] * 4,
+        "Rating": ["Five", "Four", "Three", "Six"],
+    })
+
+    result = cleaner.transform(df)
+
+    assert len(result) == 1
+    assert result.iloc[0]["Title"] == "Valid"
+
+
+def test_numeric_ratings_are_supported(cleaner):
+    df = pd.DataFrame({
+        "Title": ["Book A", "Book B"],
+        "Price": ["£10.00", "£20.00"],
+        "Stock_Status": ["In stock", "Out of stock"],
+        "Rating": [4, 5],
+    })
+
+    result = cleaner.transform(df)
+
+    assert result["Rating"].tolist() == [4, 5]
+
+
+def test_missing_required_columns_raise_error(cleaner):
+    df = pd.DataFrame({
+        "Title": ["Book A"],
+        "Price": ["£10.00"],
+    })
+
+    with pytest.raises(ValueError, match="Missing required columns"):
+        cleaner.transform(df)
+
+
+def test_empty_dataframe(cleaner):
+    df = pd.DataFrame(columns=[
+        "Title", "Price", "Rating", "Stock_Status"
+    ])
+
+    result = cleaner.transform(df)
+
+    assert result.empty
+    assert list(result.columns) == [
+        "Title", "Price", "Rating", "In_Stock"
+    ]
+
+
+def test_database_insert(database, sample_raw_dataframe):
     cleaner = DataCleaner()
-    cleaned_df = cleaner.transform(sample_raw_dataframe)
+    clean_df = cleaner.transform(sample_raw_dataframe)
 
-    # Assert Price Conversion
-    assert cleaned_df['Price'].dtype == float
-    assert cleaned_df['Price'].iloc[0] == 51.77
-    assert cleaned_df['Price'].iloc[1] == 10.25
+    assert database.save_dataframe(clean_df) is True
 
-    # Assert Rating Conversion
-    assert cleaned_df['Rating'].dtype == int
-    assert cleaned_df['Rating'].iloc[0] == 3
-    assert cleaned_df['Rating'].iloc[1] == 5
-    assert cleaned_df['Rating'].iloc[2] == 1
+    result = database.execute_query("SELECT * FROM books")
 
-    # Assert Stock Boolean Conversion
-    assert cleaned_df['In_Stock'].dtype == bool
-    assert cleaned_df['In_Stock'].iloc[0] is True
-    assert cleaned_df['In_Stock'].iloc[2] is False
+    assert result is not None
+    assert len(result) == 3
 
-def test_rating_map_completeness():
-    """Validates that all target rating string values map correctly."""
-    cleaner = DataCleaner()
-    assert len(cleaner.RATING_MAP) == 5
-    assert cleaner.RATING_MAP['Five'] == 5
+
+def test_database_refresh_prevents_duplicates(database):
+    first_df = pd.DataFrame({
+        "Title": ["Book A", "Book B"],
+        "Price": [10.0, 20.0],
+        "Rating": [4, 5],
+        "In_Stock": [True, False],
+    })
+
+    second_df = pd.DataFrame({
+        "Title": ["Book C"],
+        "Price": [30.0],
+        "Rating": [3],
+        "In_Stock": [True],
+    })
+
+    assert database.save_dataframe(first_df) is True
+    assert database.save_dataframe(second_df) is True
+
+    result = database.execute_query("SELECT title FROM books")
+
+    assert result["title"].tolist() == ["Book C"]
+    assert len(result) == 1
+
+
+def test_empty_database_input_does_not_delete_existing_data(database):
+    df = pd.DataFrame({
+        "Title": ["Book A"],
+        "Price": [10.0],
+        "Rating": [4],
+        "In_Stock": [True],
+    })
+
+    assert database.save_dataframe(df) is True
+    assert database.save_dataframe(pd.DataFrame()) is False
+
+    result = database.execute_query("SELECT * FROM books")
+
+    assert len(result) == 1
+
+
+def test_invalid_database_input_does_not_delete_existing_data(database):
+    valid_df = pd.DataFrame({
+        "Title": ["Book A"],
+        "Price": [10.0],
+        "Rating": [4],
+        "In_Stock": [True],
+    })
+
+    invalid_df = pd.DataFrame({
+        "Title": ["Invalid Book"],
+        "Price": [-10.0],
+        "Rating": [4],
+        "In_Stock": [True],
+    })
+
+    assert database.save_dataframe(valid_df) is True
+    assert database.save_dataframe(invalid_df) is False
+
+    result = database.execute_query("SELECT title FROM books")
+
+    assert result["title"].tolist() == ["Book A"]
