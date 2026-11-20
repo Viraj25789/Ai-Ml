@@ -73,11 +73,14 @@ def get_summary_stats(path: str) -> dict:
         df      = pd.read_csv(path)
         col_map = {c.lower(): c for c in df.columns}
         items_col = col_map.get("items", df.columns[0])
-        user_col  = col_map.get("userid") or col_map.get("user_id")
+        user_col  = col_map.get("userid") or col_map.get("user_id") or col_map.get("user")
 
         total_tx  = len(df)
         total_usr = df[user_col].nunique() if user_col and user_col in df.columns else df.iloc[:, 0].nunique()
-        baskets   = df[items_col].apply(lambda x: [i.strip() for i in str(x).split(",")])
+        baskets   = df[items_col].apply(
+            lambda value: [item.strip() for item in str(value).split(",")
+                           if item.strip() and item.strip().lower() != "nan"]
+        )
         avg_size  = round(baskets.apply(len).mean(), 1)
 
         return {
@@ -266,7 +269,7 @@ def upload():
         cf_model = new_cf_model
         return redirect(url_for("index"))
 
-    except (pd.errors.ParserError, UnicodeDecodeError, ValueError, OSError) as error:
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError, ValueError, OSError) as error:
         return Response(
             f"Could not process uploaded CSV: {error}",
             status=400,
@@ -390,10 +393,11 @@ Recommended Items    : {', '.join(profile['recommendations']) or 'No history fou
 ==============================================================
 """
 
+    safe_user_id = secure_filename(str(user_id)) or "user"
     return Response(
         report,
         mimetype="text/plain",
-        headers={"Content-Disposition": f"attachment; filename=Report_{user_id}.txt"},
+        headers={"Content-Disposition": f"attachment; filename=Report_{safe_user_id}.txt"},
     )
 
 
