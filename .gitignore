@@ -31,3 +31,7 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Generated logs and temporary files
+*.log
+*.tmp
