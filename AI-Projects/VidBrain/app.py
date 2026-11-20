@@ -64,6 +64,14 @@ video_url = st.text_input(
     placeholder="https://www.youtube.com/watch?v=...",
 )
 
+# Clear the previous video's data as soon as the URL field is emptied.
+# Otherwise, the old vector store remains active and the old chat is still usable.
+if not video_url.strip():
+    st.session_state.vector_store = None
+    st.session_state.current_video_id = None
+    st.session_state.chat_history = []
+    st.session_state.video_error = None
+
 if video_url.strip():
     video_id = extract_video_id(video_url.strip())
 
