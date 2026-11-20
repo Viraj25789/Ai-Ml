@@ -4,7 +4,7 @@ A versioned Python project that demonstrates how to collect, clean, validate, st
 
 ## Recommended version
 
-<badge>Latest: Version 4</badge>
+**Latest: Version 4**
 
 Start with [version_4](version_4/). It is the most complete implementation and includes:
 
