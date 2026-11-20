@@ -1,8 +1,7 @@
-pandas 
-numpy 
+pandas
+numpy
 matplotlib
 seaborn
-ipykernel
 scikit-learn
 streamlit
 joblib
