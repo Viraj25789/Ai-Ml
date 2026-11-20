@@ -190,3 +190,26 @@ def test_analyzer_returns_none_when_database_is_empty(pipeline):
     analyzer = MarketAnalyzer(db=pipeline.db)
 
     assert analyzer.generate_report() is None
+
+
+
+def test_analyzer_uses_only_the_latest_snapshot(pipeline, sample_records):
+    first_batch = sample_records
+    second_batch = [
+        {
+            "name": "Solana",
+            "symbol": "sol",
+            "current_price": 150,
+            "market_cap": 70000000,
+            "price_change_percentage_24h": 8.0,
+        }
+    ]
+
+    assert pipeline.process_and_store(first_batch) is True
+    assert pipeline.process_and_store(second_batch) is True
+
+    report = MarketAnalyzer(db=pipeline.db).generate_report()
+
+    assert report is not None
+    assert report["total_assets"] == 1
+    assert report["top_gainer"]["name"] == "Solana"
