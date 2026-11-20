@@ -172,5 +172,10 @@ if st.session_state.vector_store is not None:
                 {"role": "assistant", "content": answer}
             )
 
-elif not video_url.strip():
+else:
+    # Clear the previous video's session data when the URL is removed.
+    st.session_state.vector_store = None
+    st.session_state.current_video_id = None
+    st.session_state.chat_history = []
+    st.session_state.video_error = None
     st.info("Paste a YouTube URL above to start learning from a video.")
