@@ -28,10 +28,12 @@ def load_data(path=DATA_PATH):
     if missing:
         raise ValueError(f"Dataset is missing required columns: {missing}")
     data = data[required].copy()
-    data[TARGET] = pd.to_numeric(data[TARGET], errors="coerce")
+    for column in NUMERIC_FEATURES + [TARGET]:
+        data[column] = pd.to_numeric(data[column], errors="coerce")
     data = data.dropna(subset=[TARGET])
+    data = data[data[TARGET] > 0]
     if data.empty:
-        raise ValueError("No rows with a valid target price were found.")
+        raise ValueError("No rows with a valid positive target price were found.")
     return data
 
 
@@ -82,8 +84,9 @@ def train(data_path=DATA_PATH, model_path=MODEL_PATH):
     model = build_pipeline()
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
-    feature_count = len(NUMERIC_FEATURES) + len(CATEGORICAL_FEATURES)
-    metrics = evaluate(y_test, predictions, feature_count)
+    # Adjusted R² must use the expanded feature count after one-hot encoding.
+    transformed_feature_count = model.named_steps["preprocessing"].transform(X_test).shape[1]
+    metrics = evaluate(y_test, predictions, transformed_feature_count)
 
     model_path = Path(model_path)
     model_path.parent.mkdir(parents=True, exist_ok=True)
