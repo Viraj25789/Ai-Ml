@@ -40,27 +40,26 @@ st.set_page_config(page_title="RetailIQ", page_icon="🗒️", layout="wide")
 theme.inject()
 
 
-@st.cache_resource
-def get_connection():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+def run_query_readonly(sql: str) -> pd.DataFrame:
+    """Run one query on a fresh, read-only connection.
 
-
-@st.cache_resource
-def get_readonly_connection():
-    """A connection opened in SQLite's read-only URI mode — used for any SQL
-    that didn't come from our own verified query library (LLM output, the
-    playground). Even if a bad query slipped past the keyword filter, the
-    database itself would refuse to let it write anything."""
+    Streamlit cache_resource shares objects across user sessions. Sharing one
+    SQLite connection between concurrent sessions can cause cursor and
+    transaction interference, even with check_same_thread=False. A short-lived
+    connection keeps each request isolated and the database itself read-only.
+    """
     uri = f"file:{DB_PATH}?mode=ro"
-    return sqlite3.connect(uri, uri=True, check_same_thread=False)
+    connection = sqlite3.connect(uri, uri=True, timeout=10)
+    try:
+        connection.execute("PRAGMA query_only = ON")
+        return pd.read_sql_query(sql, connection)
+    finally:
+        connection.close()
 
 
 def run_query(sql: str) -> pd.DataFrame:
-    return pd.read_sql_query(sql, get_connection())
-
-
-def run_query_readonly(sql: str) -> pd.DataFrame:
-    return pd.read_sql_query(sql, get_readonly_connection())
+    # Built-in reports are SELECT-only too, so use the same read-only path.
+    return run_query_readonly(sql)
 
 
 @st.cache_resource
