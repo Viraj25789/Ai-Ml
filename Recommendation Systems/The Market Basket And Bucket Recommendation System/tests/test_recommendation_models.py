@@ -64,3 +64,29 @@ def test_collaborative_filtering_builds_user_item_matrix(tmp_path):
     assert len(model.user_item_matrix.index) == 3
     assert set(model.all_items) == {"Laptop", "Mouse", "Keyboard"}
     assert model.get_popular_items(top_n=2)
+
+
+def test_markov_does_not_invent_order_inside_a_basket(tmp_path):
+    path = tmp_path / "unordered.csv"
+    pd.DataFrame([
+        {"TransactionID": 1, "UserID": 1, "Items": "Bread, Milk"},
+    ]).to_csv(path, index=False)
+
+    model = AprioriModel(path)
+
+    assert not model._transitions
+
+
+def test_markov_learns_transitions_between_user_baskets(tmp_path):
+    path = tmp_path / "sequence.csv"
+    pd.DataFrame([
+        {"TransactionID": 1, "UserID": 1, "Items": "Bread, Milk"},
+        {"TransactionID": 2, "UserID": 1, "Items": "Eggs"},
+        {"TransactionID": 3, "UserID": 2, "Items": "Coffee"},
+    ]).to_csv(path, index=False)
+
+    model = AprioriModel(path)
+
+    assert model._transitions["Bread"]["Eggs"] == 1
+    assert model._transitions["Milk"]["Eggs"] == 1
+    assert "Milk" not in model._transitions["Bread"]
