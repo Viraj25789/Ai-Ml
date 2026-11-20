@@ -28,6 +28,23 @@ def test_apriori_loads_products_and_generates_rules(tmp_path):
     assert not model.rules.empty
 
 
+def test_apriori_excludes_rules_with_lift_at_or_below_one(tmp_path):
+    path = tmp_path / "negative_association.csv"
+    pd.DataFrame(
+        [
+            *[{"TransactionID": i, "UserID": i, "Items": "A, B"} for i in range(1, 4)],
+            *[{"TransactionID": i, "UserID": i, "Items": "A"} for i in range(4, 9)],
+            *[{"TransactionID": i, "UserID": i, "Items": "B"} for i in range(9, 11)],
+        ]
+    ).to_csv(path, index=False)
+
+    model = AprioriModel(path)
+
+    # A appears in 8/10 baskets and B in 5/10; their 3 co-occurrences
+    # produce lift 0.75, so the pair must not become a recommendation.
+    assert model.rules.empty
+
+
 def test_apriori_returns_product_associations(tmp_path):
     path = create_dataset(tmp_path / "transactions.csv")
 
