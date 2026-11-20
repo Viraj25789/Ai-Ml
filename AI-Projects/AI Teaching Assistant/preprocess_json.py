@@ -72,14 +72,14 @@ def build_index(json_dir="jsons", output_path="embeddings.joblib", batch_size=BA
     if not chunks:
         raise ValueError(f"No transcript chunks found in {json_dir}.")
 
+    for chunk_id, chunk in enumerate(chunks):
+        chunk["chunk_id"] = chunk_id
+
     for start in range(0, len(chunks), batch_size):
         batch = chunks[start:start + batch_size]
         vectors = create_embedding([chunk["text"] for chunk in batch])
         for chunk, vector in zip(batch, vectors):
             chunk["embedding"] = vector
-            chunk["chunk_id"] = len(
-                [item for item in chunks[:start] if "embedding" in item]
-            ) + batch.index(chunk)
 
     frame = pd.DataFrame.from_records(chunks)
     if frame.empty or frame["embedding"].isna().any():
