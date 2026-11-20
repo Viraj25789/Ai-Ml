@@ -1,63 +1,126 @@
-import pandas as pd 
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np 
-import joblib 
+"""Ask course questions against precomputed transcript embeddings.
+
+Requires Ollama with bge-m3 and llama3.2 running locally.
+"""
+from pathlib import Path
+import argparse
+
+import joblib
+import numpy as np
+import pandas as pd
 import requests
+from sklearn.metrics.pairwise import cosine_similarity
+
+ROOT = Path(__file__).resolve().parent
+EMBEDDINGS_PATH = ROOT / "embeddings.joblib"
+OLLAMA_URL = "http://localhost:11434"
+EMBED_MODEL = "bge-m3"
+CHAT_MODEL = "llama3.2"
+REQUIRED_COLUMNS = {"title", "number", "start", "end", "text", "embedding"}
 
 
-def create_embedding(text_list):
-    # https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
-    r = requests.post("http://localhost:11434/api/embed", json={
-        "model": "bge-m3",
-        "input": text_list
-    })
-
-    embedding = r.json()["embeddings"] 
-    return embedding
-
-def inference(prompt):
-    r = requests.post("http://localhost:11434/api/generate", json={
-        # "model": "deepseek-r1",
-        "model": "llama3.2",
-        "prompt": prompt,
-        "stream": False
-    })
-
-    response = r.json()
-    print(response)
-    return response
-
-df = joblib.load('embeddings.joblib')
+def ollama_post(endpoint, payload):
+    try:
+        response = requests.post(
+            f"{OLLAMA_URL}{endpoint}", json=payload, timeout=(10, 180)
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as exc:
+        raise RuntimeError(
+            "Could not reach Ollama. Start Ollama and pull the required models."
+        ) from exc
+    except ValueError as exc:
+        raise RuntimeError("Ollama returned an invalid JSON response.") from exc
 
 
-incoming_query = input("Ask a Question: ")
-question_embedding = create_embedding([incoming_query])[0] 
+def create_embedding(text):
+    result = ollama_post("/api/embed", {"model": EMBED_MODEL, "input": [text]})
+    embeddings = result.get("embeddings")
+    if not embeddings or not embeddings[0]:
+        raise RuntimeError("Ollama returned no query embedding.")
+    return np.asarray(embeddings[0], dtype=float)
 
-# Find similarities of question_embedding with other embeddings
-# print(np.vstack(df['embedding'].values))
-# print(np.vstack(df['embedding']).shape)
-similarities = cosine_similarity(np.vstack(df['embedding']), [question_embedding]).flatten()
-# print(similarities)
-top_results = 5
-max_indx = similarities.argsort()[::-1][0:top_results]
-# print(max_indx)
-new_df = df.loc[max_indx] 
-# print(new_df[["title", "number", "text"]])
 
-prompt = f'''I am teaching web development in my Sigma web development course. Here are video subtitle chunks containing video title, video number, start time in seconds, end time in seconds, the text at that time:
+def load_embeddings(path=EMBEDDINGS_PATH):
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Missing {path.name}. Run preprocess_json.py to build the search index."
+        )
+    frame = joblib.load(path)
+    if not isinstance(frame, pd.DataFrame) or frame.empty:
+        raise ValueError("The embedding index is empty or has an invalid format.")
+    missing = REQUIRED_COLUMNS - set(frame.columns)
+    if missing:
+        raise ValueError(f"Embedding index is missing columns: {sorted(missing)}")
+    frame = frame.dropna(subset=["text", "embedding"]).reset_index(drop=True)
+    if frame.empty:
+        raise ValueError("The embedding index contains no usable transcript chunks.")
+    return frame
 
-{new_df[["title", "number", "start", "end", "text"]].to_json(orient="records")}
----------------------------------
-"{incoming_query}"
-User asked this question related to the video chunks, you have to answer in a human way (dont mention the above format, its just for you) where and how much content is taught in which video (in which video and at what timestamp) and guide the user to go to that particular video. If user asks unrelated question, tell him that you can only answer questions related to the course
-'''
-with open("prompt.txt", "w") as f:
-    f.write(prompt)
 
-response = inference(prompt)["response"]
-print(response)
+def retrieve(frame, query, top_k=5):
+    query_vector = create_embedding(query)
+    vectors = np.vstack(frame["embedding"].map(
+        lambda value: np.asarray(value, dtype=float)
+    ).to_list())
+    if vectors.ndim != 2 or vectors.shape[1] != len(query_vector):
+        raise ValueError("Stored embeddings do not match the Ollama embedding model.")
+    scores = cosine_similarity(vectors, query_vector.reshape(1, -1)).ravel()
+    indices = np.argsort(scores)[::-1][:top_k]
+    results = frame.iloc[indices].copy()
+    results["similarity"] = scores[indices]
+    return results
 
-with open("response.txt", "w") as f:
-    f.write(response)
-# for index, item in new_df.iterrows():
-#     print(index, item["title"], item["number"], item["text"], item["start"], item["end"])
+
+def build_prompt(query, chunks):
+    records = chunks[["title", "number", "start", "end", "text"]].to_dict("records")
+    context = "\n".join(
+        f"Video {item['number']} — {item['title']} "
+        f"({float(item['start']):.1f}s–{float(item['end']):.1f}s): "
+        f"{str(item['text'])}"
+        for item in records
+    )
+    return f"""You are a course-content assistant. Answer only using the transcript excerpts below.
+If the excerpts do not contain the answer, say that the topic was not found in the available course transcripts.
+Never invent a video number, title, timestamp, or lesson detail.
+Explain briefly and cite the relevant video title/number and timestamp in minutes:seconds.
+If the question is unrelated to this course, politely say you can only answer questions about this course.
+
+TRANSCRIPT EXCERPTS:
+{context}
+
+STUDENT QUESTION:
+{query}
+
+Answer:"""
+
+
+def answer_question(query, index):
+    chunks = retrieve(index, query)
+    result = ollama_post(
+        "/api/generate",
+        {"model": CHAT_MODEL, "prompt": build_prompt(query, chunks), "stream": False},
+    )
+    answer = result.get("response", "").strip()
+    if not answer:
+        raise RuntimeError("The language model returned an empty answer.")
+    return answer
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Search course video transcripts.")
+    parser.add_argument("--top-k", type=int, default=5, help="Transcript chunks to retrieve (default: 5).")
+    args = parser.parse_args()
+    if args.top_k < 1:
+        parser.error("--top-k must be at least 1")
+    query = input("Ask a course question: ").strip()
+    if not query:
+        parser.error("Please enter a non-empty question.")
+    index = load_embeddings()
+    print("\n" + answer_question(query, index))
+
+
+if __name__ == "__main__":
+    main()
