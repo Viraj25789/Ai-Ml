@@ -34,6 +34,25 @@ class CarPricePipelineTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "missing required columns"):
                 load_data(path)
 
+    def test_load_data_coerces_numeric_features_and_drops_invalid_targets(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "cars.csv"
+            frame = pd.DataFrame({
+                "year": ["2018", "not-a-year"],
+                "mileage": ["12000", "bad"],
+                "tax": ["145", "145"],
+                "mpg": ["55.0", "50.0"],
+                "engineSize": ["1.0", "1.2"],
+                "model": ["Fiesta", "Focus"],
+                "transmission": ["Manual", "Manual"],
+                "fuelType": ["Petrol", "Petrol"],
+                "price": ["9000", "-1"],
+            })
+            frame.to_csv(path, index=False)
+            result = load_data(path)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result.iloc[0]["mileage"], 12000)
+
     def test_metrics_include_mae_rmse_and_r2(self):
         result = evaluate([100, 200, 300, 400], [110, 190, 310, 390], 2)
         self.assertEqual(set(result), {"mae", "rmse", "r2", "adjusted_r2"})
