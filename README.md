@@ -2,6 +2,8 @@
 
 Practical projects demonstrating Python development, data analytics, machine learning, data pipelines, recommendation systems and retrieval-augmented generation (RAG).
 
+**Preparing for interviews?** See the [Project Interview Guide](PROJECT_INTERVIEW_GUIDE.md) for project walkthroughs, technical questions, demo suggestions, and honest limitations.
+
 ## Featured projects
 
 ### Data Analytics & Data Engineering
