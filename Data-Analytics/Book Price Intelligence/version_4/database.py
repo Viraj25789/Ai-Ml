@@ -1,123 +1,150 @@
-import sqlite3
-import pandas as pd
+
 import logging
+import os
+import sqlite3
 from typing import Optional
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("pipeline.log"),
-        logging.StreamHandler()
-    ]
-)
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
 
 class DatabaseManager:
-    """
-    Manages SQLite database connections, schema migrations, and high-performance
-    batch insertions for the e-commerce data pipeline.
-    """
+    """Manage the SQLite database for the book price pipeline."""
 
     def __init__(self, db_path: str = "data/ecommerce_catalog.db"):
         self.db_path = db_path
         self._initialize_schema()
 
     def _get_connection(self) -> sqlite3.Connection:
-        """Creates and returns a new database connection."""
+        """Create a database connection and its parent directory."""
+        directory = os.path.dirname(self.db_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+
         return sqlite3.connect(self.db_path)
 
     def _initialize_schema(self) -> None:
-        """
-        Creates the target relational table and indices if they do not exist.
-        Includes constraints to ensure data integrity at the database level.
-        """
-        create_table_sql = """
-        CREATE TABLE IF NOT EXISTS books (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            price_gbp REAL NOT NULL CHECK(price_gbp >= 0),
-            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-            in_stock BOOLEAN NOT NULL CHECK(in_stock IN (0, 1)),
-            extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-        
-        # Indexing frequently queried analytical columns
-        create_index_sql = """
-        CREATE INDEX IF NOT EXISTS idx_books_rating_price 
-        ON books(rating, price_gbp);
-        """
+        """Create the books table and analytical index."""
+        connection = self._get_connection()
 
         try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(create_table_sql)
-                cursor.execute(create_index_sql)
-                conn.commit()
-            logging.info("Database schema initialized and indices created successfully.")
-        except sqlite3.Error as e:
-            logging.error(f"Failed to initialize database schema: {e}")
-            raise
+            with connection:
+                connection.execute("""
+                    CREATE TABLE IF NOT EXISTS books (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title TEXT NOT NULL,
+                        price_gbp REAL NOT NULL CHECK(price_gbp >= 0),
+                        rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+                        in_stock BOOLEAN NOT NULL CHECK(in_stock IN (0, 1)),
+                        extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
 
-    def save_dataframe(self, df: pd.DataFrame, table_name: str = "books", if_exists: str = "append") -> bool:
+                connection.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_books_rating_price
+                    ON books(rating, price_gbp)
+                """)
+
+            logger.info("Database schema initialized.")
+
+        finally:
+            connection.close()
+
+    def save_dataframe(
+        self,
+        df: pd.DataFrame,
+        table_name: str = "books",
+    ) -> bool:
         """
-        Persists a cleaned Pandas DataFrame directly into the SQL database.
-        
-        Args:
-            df (pd.DataFrame): Cleaned DataFrame with aligned schema columns.
-            table_name (str): Target database table name.
-            if_exists (str): Action if table exists ('fail', 'replace', 'append').
-            
-        Returns:
-            bool: True if transaction succeeded, False otherwise.
+        Replace existing book records with the latest cleaned dataset.
+
+        Existing records are preserved if the new dataset is empty or
+        the database transaction fails.
         """
-        if df.empty:
-            logging.warning("Received empty DataFrame. Skipping database insertion.")
+        if table_name != "books":
+            logger.error("Unsupported table: %s", table_name)
             return False
 
-        # Rename columns to match SQL schema conventions
-        rename_map = {
-            'Title': 'title',
-            'Price': 'price_gbp',
-            'Rating': 'rating',
-            'In_Stock': 'in_stock'
-        }
-        
-        formatted_df = df.rename(columns=rename_map)
-        
-        # Filter for schema alignment
-        target_columns = ['title', 'price_gbp', 'rating', 'in_stock']
-        formatted_df = formatted_df[target_columns]
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            logger.warning("Empty or invalid DataFrame. Database unchanged.")
+            return False
+
+        required_columns = ["Title", "Price", "Rating", "In_Stock"]
+        missing = [column for column in required_columns if column not in df.columns]
+
+        if missing:
+            logger.error("Missing columns: %s", ", ".join(missing))
+            return False
 
         try:
-            with self._get_connection() as conn:
-                formatted_df.to_sql(
-                    name=table_name,
-                    con=conn,
-                    if_exists=if_exists,
-                    index=False,
-                    method='multi', # Vectorized batch insertion
-                    chunksize=500
-                )
-                conn.commit()
-            logging.info(f"Successfully inserted {len(formatted_df)} records into '{table_name}' table.")
+            records = []
+
+            for title, price, rating, in_stock in df[required_columns].itertuples(
+                index=False, name=None
+            ):
+                if pd.isna(title) or pd.isna(price) or pd.isna(rating):
+                    raise ValueError("Dataset contains missing required values.")
+
+                title = str(title).strip()
+                price = float(price)
+                rating = int(rating)
+                in_stock = int(bool(in_stock))
+
+                if not title or price < 0 or rating not in range(1, 6):
+                    raise ValueError("Dataset contains invalid book records.")
+
+                records.append((title, price, rating, in_stock))
+
+            connection = self._get_connection()
+
+            try:
+                with connection:
+                    connection.execute("DELETE FROM books")
+
+                    connection.executemany(
+                        """
+                        INSERT INTO books
+                            (title, price_gbp, rating, in_stock)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        records,
+                    )
+
+            finally:
+                connection.close()
+
+            logger.info(
+                "Database refreshed successfully with %s records.",
+                len(records),
+            )
             return True
-        except (sqlite3.Error, Exception) as e:
-            logging.error(f"Database insertion failed: {e}")
+
+        except (sqlite3.Error, ValueError, TypeError, OverflowError) as error:
+            logger.exception("Database refresh failed: %s", error)
             return False
 
-    def execute_query(self, query: str, params: tuple = ()) -> Optional[pd.DataFrame]:
-        """Executes a read query and returns the result as a Pandas DataFrame."""
+    def execute_query(
+        self,
+        query: str,
+        params: tuple = (),
+    ) -> Optional[pd.DataFrame]:
+        """Execute a SQL query and return its results as a DataFrame."""
+        connection = self._get_connection()
+
         try:
-            with self._get_connection() as conn:
-                df = pd.read_sql_query(query, conn, params=params)
-                return df
-        except sqlite3.Error as e:
-            logging.error(f"SQL execution error: {e}")
+            return pd.read_sql_query(query, connection, params=params)
+
+        except (sqlite3.Error, pd.errors.DatabaseError) as error:
+            logger.exception("SQL execution failed: %s", error)
             return None
+
+        finally:
+            connection.close()
 
 
 if __name__ == "__main__":
-    db = DatabaseManager()
-    logging.info("Database manager module execution completed.")
+    logging.basicConfig(level=logging.INFO)
+
+    database = DatabaseManager()
+    logger.info("Database manager initialized successfully.")
